@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KeyClick 自测页</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+        background: #14161f;
+        color: #e8eaf2;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow: hidden;
+      }
+      header {
+        padding: 10px 16px;
+        background: #1b1e2b;
+        border-bottom: 1px solid #2a2e3f;
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        flex-wrap: wrap;
+        font-size: 13px;
+      }
+      header b { color: #8f6bff; }
+      main { flex: 1; position: relative; }
+      canvas { display: block; width: 100%; height: 100%; background: #0e1017; }
+      #log {
+        position: absolute;
+        left: 12px;
+        top: 12px;
+        width: 320px;
+        max-height: 40%;
+        overflow-y: auto;
+        background: rgba(20, 22, 32, 0.85);
+        border: 1px solid #2a2e3f;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 11px;
+        line-height: 1.6;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        pointer-events: none;
+      }
+      #menuTrigger {
+        position: absolute;
+        right: 24px;
+        top: 24px;
+        padding: 8px 14px;
+        background: #232741;
+        border: 1px solid #3a3f63;
+        border-radius: 8px;
+        cursor: pointer;
+        user-select: none;
+      }
+      #menu {
+        position: absolute;
+        right: 24px;
+        top: 62px;
+        width: 150px;
+        background: #232741;
+        border: 1px solid #3a3f63;
+        border-radius: 8px;
+        padding: 6px;
+        display: none;
+      }
+      #menu[data-open="true"] { display: block; }
+      #menu div { padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+      #menu div:hover { background: #343a5e; }
+      #inputRow {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        font-size: 12px;
+      }
+      #inputRow input {
+        width: 220px;
+        padding: 6px 9px;
+        border-radius: 6px;
+        border: 1px solid #3a3f63;
+        background: #1b1e2b;
+        color: #e8eaf2;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span>canvas 点击计数：<b id="clickCount">0</b></span>
+      <span>hover 菜单点击：<b id="menuCount">0</b></span>
+      <span>视口：<b id="vp"></b></span>
+      <span>DPR：<b id="dpr"></b></span>
+      <span>页面收到按键：<b id="keyLog">—</b></span>
+      <span>提示：录制单键（如 <b>H</b>）或组合键后刷新页面再按键；触发点会出现标记浮层；改变窗口大小可验证归一化坐标；不同布局可切换方案。</span>
+    </header>
+    <main>
+      <canvas id="stage"></canvas>
+      <div id="log"></div>
+      <div id="menuTrigger">悬停展开菜单</div>
+      <div id="menu">
+        <div data-item="A">菜单项 A</div>
+        <div data-item="B">菜单项 B</div>
+      </div>
+      <div id="inputRow">
+        <span>输入框（验证 skipInInput）：</span>
+        <input id="probe" placeholder="在这里打字时快捷键不应触发" />
+      </div>
+    </main>
+
+    <script>
+      const canvas = document.getElementById('stage');
+      const ctx = canvas.getContext('2d');
+      const logEl = document.getElementById('log');
+      const marks = [];
+      let clickCount = 0;
+      let menuCount = 0;
+      let lastClickAt = null;
+
+      function resize() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        document.getElementById('vp').textContent =
+          innerWidth + '×' + innerHeight;
+        document.getElementById('dpr').textContent = devicePixelRatio;
+        draw();
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < canvas.width; x += 40) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+          ctx.stroke();
+        }
+        for (let y = 0; y < canvas.height; y += 40) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+        for (const m of marks.slice(-40)) {
+          ctx.strokeStyle = m.trusted ? '#34d399' : '#ff5470';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(m.x, m.y, 9, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(m.x - 14, m.y);
+          ctx.lineTo(m.x + 14, m.y);
+          ctx.moveTo(m.x, m.y - 14);
+          ctx.lineTo(m.x, m.y + 14);
+          ctx.stroke();
+        }
+      }
+
+      function log(text) {
+        const line = document.createElement('div');
+        line.textContent = text;
+        logEl.appendChild(line);
+        while (logEl.children.length > 60) logEl.removeChild(logEl.firstChild);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      canvas.addEventListener('mousedown', (e) => {
+        clickCount++;
+        document.getElementById('clickCount').textContent = clickCount;
+        const rect = canvas.getBoundingClientRect();
+        marks.push({ x: e.clientX - rect.left, y: e.clientY - rect.top, trusted: e.isTrusted });
+        draw();
+        const now = performance.now();
+        const delta = lastClickAt == null ? '' : ` Δ${Math.round(now - lastClickAt)}ms`;
+        lastClickAt = now;
+        log(
+          `mousedown @(${Math.round(e.clientX)},${Math.round(e.clientY)}) isTrusted=${e.isTrusted}${delta}`,
+        );
+      });
+
+      // 扩展在 window 捕获阶段拦截已绑定的按键，因此这些按键不会出现在这里
+      addEventListener('keydown', (e) => {
+        document.getElementById('keyLog').textContent = e.code;
+        log(`keydown ${e.code} isTrusted=${e.isTrusted}`);
+      });
+
+      const menu = document.getElementById('menu');
+      const trigger = document.getElementById('menuTrigger');
+      let hideTimer = null;
+      trigger.addEventListener('mouseenter', () => {
+        clearTimeout(hideTimer);
+        menu.dataset.open = 'true';
+        log('mouseenter → 菜单展开');
+      });
+      trigger.addEventListener('mouseleave', () => {
+        hideTimer = setTimeout(() => (menu.dataset.open = 'false'), 400);
+      });
+      menu.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+      menu.addEventListener('mouseleave', () => {
+        hideTimer = setTimeout(() => (menu.dataset.open = 'false'), 400);
+      });
+      menu.addEventListener('click', (e) => {
+        const item = e.target.dataset && e.target.dataset.item;
+        if (!item) return;
+        menuCount++;
+        document.getElementById('menuCount').textContent = menuCount;
+        log(`菜单项 ${item} 被点击 isTrusted=${e.isTrusted}`);
+      });
+
+      addEventListener('resize', resize);
+      resize();
+    </script>
+  </body>
+</html>
