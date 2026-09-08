@@ -191,4 +191,9 @@ tools/gen-icons.mjs           手写 PNG 编码器生成图标
 tools/smoke-content.mjs       Node 侧内容脚本冒烟测试
 tools/verify-inject.mjs       有头 Chrome 注入检查
 test/demo.html                自测页
+LICENSE                       MIT 许可证
 ```
+
+## 许可
+
+MIT，见 [LICENSE](LICENSE)。
