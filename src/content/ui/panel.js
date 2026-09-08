@@ -51,11 +51,11 @@
           <div class="kc-sec-title">方案</div>
           <div class="kc-scheme-row">
             <select class="kc-select" data-scheme="select" title="切换方案"></select>
-            <button class="kc-iconbtn" type="button" data-act="scheme-new" title="新建方案（复制当前方案的规则）">新建</button>
+            <button class="kc-iconbtn" type="button" data-act="scheme-new" title="新建空方案（快捷键需重新录制）">新建</button>
             <button class="kc-iconbtn" type="button" data-act="scheme-rename" title="重命名当前方案">改名</button>
             <button class="kc-iconbtn" type="button" data-act="scheme-delete" title="删除当前方案">删除</button>
           </div>
-          <div class="kc-scheme-hint">窗口尺寸或布局不同时切换方案，各方案的快捷键互不干扰。</div>
+          <div class="kc-scheme-hint">窗口尺寸或布局不同时切换方案，各方案的快捷键互不干扰；新建的方案是空的，需要重新录制。</div>
         </div>
 
         <div class="kc-section">
@@ -201,10 +201,10 @@
 
     if (act === 'scheme-new') {
       const suggested = `方案 ${KC.store.schemeNames(KC.origin).length + 1}`;
-      const name = window.prompt('新方案名称（会复制当前方案的规则，便于按新窗口尺寸微调）', suggested);
+      const name = window.prompt('新方案名称（新方案是空的，快捷键需要重新录制）', suggested);
       if (name == null) return;
       const res = await KC.store.createScheme(KC.origin, name.trim());
-      if (res.ok) KC.hint.toast(`已创建并切换到方案「${res.name}」`, 'ok');
+      if (res.ok) KC.hint.toast(`已创建并切换到方案「${res.name}」，还没有快捷键，点上方按钮开始录制`, 'ok', 3000);
       return;
     }
 
@@ -430,8 +430,11 @@
     const rules = KC.store.rulesFor(KC.origin);
     refs.origin.textContent = KC.origin;
     refs.ruleCount.textContent = rules.length ? `（${rules.length} 条）` : '';
-    refs.listToggle.hidden = !rules.length;
-    refs.listToggle.textContent = listCollapsed ? `展开列表（${rules.length}）` : '收起列表';
+    // 收起状态跨方案保留，而新建的方案是空的：空方案也要留着「展开列表」按钮，否则回不到列表
+    refs.listToggle.hidden = !rules.length && !listCollapsed;
+    refs.listToggle.textContent = listCollapsed
+      ? `展开列表${rules.length ? `（${rules.length}）` : ''}`
+      : '收起列表';
     refs.rules.hidden = listCollapsed;
     refs.rules.textContent = '';
     if (listCollapsed) return;
@@ -439,7 +442,7 @@
     if (!rules.length) {
       const empty = document.createElement('div');
       empty.className = 'kc-empty';
-      empty.textContent = '当前方案还没有绑定任何快捷键。';
+      empty.textContent = '当前方案还没有绑定任何快捷键，点上方「录制快捷键」开始录入。';
       refs.rules.appendChild(empty);
       return;
     }

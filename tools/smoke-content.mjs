@@ -334,15 +334,26 @@ if (KC && KC.store) {
     '新建方案 :',
     created.name,
     'active:', KC.store.activeSchemeName(origin),
-    'copied:', KC.store.rulesFor(origin).length,
-    '(expect 1)',
+    'rules:', KC.store.rulesFor(origin).length,
+    '(expect 大屏 | 大屏 | 0：新方案是空的，不再复制当前方案)',
   );
   const dup = await KC.store.createScheme(origin, '大屏');
   console.log('重名去重 :', dup.name, '(expect 大屏 (2))');
 
   await KC.store.setActiveScheme(origin, '大屏');
-  await KC.store.removeRule(origin, 'r1');
-  console.log('按方案隔离:', '大屏 rules:', KC.store.rulesFor(origin).length, '(expect 0)');
+  await KC.store.upsertRule(origin, {
+    id: 'r2',
+    name: '大屏专用',
+    shortcut: { code: 'Digit9', key: '9' },
+    steps: [step(0.2, 0.2)],
+    intervalMs: KC.DEFAULT_STEP_INTERVAL_MS,
+  });
+  await KC.store.setActiveScheme(origin, '默认');
+  console.log(
+    '按方案隔离:',
+    '默认 rules:', KC.store.rulesFor(origin).map((rule) => rule.id).join(','),
+    '(expect r1：「大屏」里的 r2 不会漏进默认方案)',
+  );
 
   const deleted = await KC.store.deleteScheme(origin, '大屏');
   console.log('删除方案 :', JSON.stringify(deleted), 'active:', KC.store.activeSchemeName(origin));

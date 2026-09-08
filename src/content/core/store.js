@@ -136,15 +136,12 @@
     return `${base} (${Date.now()})`;
   }
 
-  // 新方案总是复制当前方案：换窗口尺寸时大部分坐标仍然可用，只需微调
-  async function createScheme(origin, name, { copyActive = true } = {}) {
+  // 新方案一律从空列表开始：复制会让两个方案看起来一模一样，用户分不清有没有切换成功
+  async function createScheme(origin, name) {
     const profile = await load();
     const site = siteOf(profile, origin, true);
     const finalName = uniqueName(site.schemes, name);
-    const source = copyActive ? site.schemes[site.activeScheme] : null;
-    site.schemes[finalName] = {
-      rules: source ? source.rules.map((rule) => ({ ...rule })) : [],
-    };
+    site.schemes[finalName] = { rules: [] };
     site.activeScheme = finalName;
     await save(profile);
     return { ok: true, name: finalName };
