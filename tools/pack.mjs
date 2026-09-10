@@ -12,7 +12,7 @@ import { crc32 } from 'node:zlib';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // 只打运行期需要的东西。tools/ test/ docs/ README 是给人看的，进包只会增加体积与审核面。
-const PACK_DIRS = ['src', 'assets'];
+const PACK_DIRS = ['src', 'assets', '_locales'];
 
 // 固定时间戳（2020-01-01 00:00:00）而不是当前时间：同一个提交无论何时何地打包，
 // ZIP 的字节都完全一致，事后能核对「上传到商店的包」与「仓库里那个 tag」是不是同一份。
