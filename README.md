@@ -133,6 +133,7 @@ CoordKey 提供直观的可视化操作界面，让你在录制坐标和管理�
 *   **存储格式**：改动 schema 前请先读 [docs/storage.md](docs/storage.md)。归一化必须**无损**（未知字段靠 spread 保留），Service Worker 只允许翻 `settings.enabled` 一个布尔，不得把整份 profile 写回。
 *   **测试**：修改脚本后，请运行 `node tools/smoke-content.mjs`，必须输出 `SMOKE: PASSED`。浏览器行为无法自动化（Chrome stable 会静默忽略 `--load-extension`），请按 [docs/manual-checklist.md](docs/manual-checklist.md) 手动验收。
 *   **图标**：如需修改图标，运行 `node tools/gen-icons.mjs`。
+*   **打包**：运行 `node tools/pack.mjs` 产出 `dist/coordkey-<version>.zip`，Chrome Web Store 与 Edge Add-ons 共用这一个包。脚本手写 ZIP、不引依赖也不调外部命令，产物字节可复现。提审要的素材与文案见 [store/listing.md](store/listing.md)。
 
 ### 目录结构
 ```text
@@ -144,6 +145,8 @@ src/
 │   └── ui/        # 面板、标记浮层、录制交互、样式
 └── shared/        # protocol.js：schema 版本、归一化与迁移，SW 与内容脚本共用
 docs/              # 存储结构说明、手动验收清单、界面截图
+store/             # 商店提审素材清单与文案（Chrome Web Store / Edge Add-ons）
 test/demo.html     # 自测页：canvas 点击计数、hover 菜单、输入框
-tools/             # 冒烟测试、注入验证、图标生成
+tools/             # 冒烟测试、注入验证、图标生成、打商店包
+dist/              # 打包产物，已 gitignore
 ```
