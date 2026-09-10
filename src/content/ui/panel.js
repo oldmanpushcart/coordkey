@@ -53,20 +53,20 @@
 
         <div class="ck-section">
           <div class="ck-sec-title">${t('panel.scheme')}</div>
-          <div class="ck-scheme-row">
+          <div class="ck-scheme-row" title="${t('panel.schemeHint')}">
             <select class="ck-select" data-scheme="select" title="${t('panel.schemeSwitch')}"></select>
             <button class="ck-iconbtn" type="button" data-act="scheme-new" title="${t('panel.schemeNewTip')}">${t('panel.schemeNew')}</button>
             <button class="ck-iconbtn" type="button" data-act="scheme-rename" title="${t('panel.schemeRenameTip')}">${t('panel.schemeRename')}</button>
             <button class="ck-iconbtn" type="button" data-act="scheme-delete" title="${t('panel.schemeDeleteTip')}">${t('panel.schemeDelete')}</button>
           </div>
-          <div class="ck-scheme-hint">${t('panel.schemeHint')}</div>
         </div>
 
         <div class="ck-section">
-          <div class="ck-sec-title ck-sec-head">
-            <span class="ck-rules-title"></span><span class="ck-rule-count"></span> · <span class="ck-origin"></span>
+          <div class="ck-sec-head">
+            <span class="ck-sec-title"><span class="ck-rules-title"></span> <span class="ck-rule-count"></span></span>
             <button class="ck-mini" type="button" data-act="toggle-list" title="${t('panel.toggleList')}"></button>
           </div>
+          <div class="ck-origin"></div>
           <div class="ck-rules"></div>
         </div>
 
@@ -471,6 +471,8 @@
     box.className = 'ck-steps';
     const steps = rule.steps;
 
+    box.appendChild(intervalRow(rule));
+
     steps.forEach((step, index) => {
       const row = document.createElement('div');
       row.className = 'ck-step';
@@ -570,9 +572,6 @@
       row.appendChild(top);
 
       const multi = steps.length > 1;
-      if (multi) {
-        row.appendChild(intervalRow(rule));
-      }
 
       const actions = document.createElement('div');
       actions.className = 'ck-rule-actions';
@@ -583,17 +582,20 @@
       testBtn.dataset.act = 'test';
       testBtn.dataset.id = rule.id;
       testBtn.textContent = t('panel.test');
-      actions.appendChild(testBtn);
 
-      if (multi) {
-        const stepsToggle = document.createElement('button');
-        stepsToggle.type = 'button';
-        stepsToggle.className = 'ck-mini ck-section-toggle';
-        stepsToggle.dataset.act = 'toggle-steps';
-        stepsToggle.dataset.id = rule.id;
-        stepsToggle.textContent = `${t('panel.steps', { count: steps.length })} ${expanded.has(rule.id) ? '▾' : '▸'}`;
-        actions.appendChild(stepsToggle);
-      }
+      const renameBtn = document.createElement('button');
+      renameBtn.type = 'button';
+      renameBtn.className = 'ck-mini';
+      renameBtn.dataset.act = 'rename';
+      renameBtn.dataset.id = rule.id;
+      renameBtn.textContent = t('panel.rename');
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'ck-mini';
+      deleteBtn.dataset.act = 'delete';
+      deleteBtn.dataset.id = rule.id;
+      deleteBtn.textContent = t('panel.delete');
 
       const repeatToggle = document.createElement('button');
       repeatToggle.type = 'button';
@@ -603,23 +605,19 @@
       const rc = rule.repeatCount ?? 1;
       const rArrow = repeatExpanded.has(rule.id) ? '▾' : '▸';
       repeatToggle.textContent = `${t('panel.repeat', { count: rc })} ${rArrow}`;
-      actions.appendChild(repeatToggle);
 
-      const renameBtn = document.createElement('button');
-      renameBtn.type = 'button';
-      renameBtn.className = 'ck-mini';
-      renameBtn.dataset.act = 'rename';
-      renameBtn.dataset.id = rule.id;
-      renameBtn.textContent = t('panel.rename');
-      actions.appendChild(renameBtn);
-
-      const deleteBtn = document.createElement('button');
-      deleteBtn.type = 'button';
-      deleteBtn.className = 'ck-mini';
-      deleteBtn.dataset.act = 'delete';
-      deleteBtn.dataset.id = rule.id;
-      deleteBtn.textContent = t('panel.delete');
-      actions.appendChild(deleteBtn);
+      // 测试/改名/删除/次数 恒定存在，步骤仅多点组才有：条件按钮放最后，
+      // 单点组的操作行始终一行，多点组换行时孤行落在最不常用的步骤上
+      actions.append(testBtn, renameBtn, deleteBtn, repeatToggle);
+      if (multi) {
+        const stepsToggle = document.createElement('button');
+        stepsToggle.type = 'button';
+        stepsToggle.className = 'ck-mini ck-section-toggle';
+        stepsToggle.dataset.act = 'toggle-steps';
+        stepsToggle.dataset.id = rule.id;
+        stepsToggle.textContent = `${t('panel.steps', { count: steps.length })} ${expanded.has(rule.id) ? '▾' : '▸'}`;
+        actions.appendChild(stepsToggle);
+      }
 
       row.appendChild(actions);
 

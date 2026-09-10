@@ -14,7 +14,7 @@
     'panel.schemeDelete': 'Delete',
     'panel.schemeDeleteTip': 'Delete current scheme',
     'panel.schemeHint': 'Switch schemes when window size or layout differs; shortcuts are independent per scheme; new schemes are empty and need re-recording.',
-    'panel.rulesOf': 'Rules in 「{name}」',
+    'panel.rulesOf': 'Scheme 「{name}」',
     'panel.toggleList': 'Collapse / expand shortcut list — collapse to see settings below without scrolling',
     'panel.export': 'Export Settings',
     'panel.import': 'Import Settings',

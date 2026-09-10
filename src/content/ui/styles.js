@@ -121,10 +121,17 @@
       margin-bottom: 8px;
       word-break: break-all;
     }
-    .ck-sec-head { display: flex; align-items: flex-start; gap: 8px; }
-    .ck-sec-head > span:first-child { flex: 1; min-width: 0; }
+    .ck-sec-head { display: flex; align-items: center; gap: 8px; }
+    .ck-sec-head > span:first-child { flex: 1; min-width: 0; margin-bottom: 0; }
     .ck-sec-head .ck-mini { flex: none; text-transform: none; letter-spacing: 0; }
-    .ck-origin { text-transform: none; }
+    .ck-origin {
+      font-size: 11px;
+      color: #4b5563;
+      margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     .ck-btn {
       pointer-events: auto;
@@ -246,6 +253,7 @@
       flex-direction: column;
       gap: 5px;
     }
+    .ck-steps .ck-rule-interval { margin-top: 0; }
     .ck-step {
       display: flex;
       align-items: center;
@@ -276,7 +284,7 @@
     }
     .ck-step-tail { color: #6b7280; }
     .ck-step .ck-mini { padding: 2px 6px; }
-    .ck-rule-actions { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; align-items: center; }
+    .ck-rule-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center; }
     .ck-mini {
       pointer-events: auto;
       background: rgba(255, 255, 255, 0.07);
@@ -335,7 +343,6 @@
       padding: 5px 7px;
     }
     .ck-select option { background: #1b1f2e; color: #e8eaf2; }
-    .ck-scheme-hint { margin-top: 6px; font-size: 11px; color: #6b7280; }
 
     .ck-import-box {
       margin-top: 8px;

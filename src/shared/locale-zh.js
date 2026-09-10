@@ -14,7 +14,7 @@
     'panel.schemeDelete': '删除',
     'panel.schemeDeleteTip': '删除当前方案',
     'panel.schemeHint': '窗口尺寸或布局不同时切换方案，各方案的快捷键互不干扰；新建的方案是空的，需要重新录制。',
-    'panel.rulesOf': '方案「{name}」的规则',
+    'panel.rulesOf': '方案「{name}」',
     'panel.toggleList': '收起 / 展开快捷键列表，收起后不用滚动就能看到下面的设置',
     'panel.export': '导出设置',
     'panel.import': '导入设置',
