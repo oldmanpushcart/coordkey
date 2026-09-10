@@ -1,6 +1,7 @@
 (() => {
   const CK = self.COORDKEY;
   const { STORAGE_KEY, DEFAULT_SCHEME } = CK;
+  const t = (key) => CK.i18n.t(key);
 
   let cache = null;
   let loading = null;
@@ -92,7 +93,7 @@
     const profile = await load();
     const site = siteOf(profile, origin, true);
     const scheme = schemeById(site, id);
-    if (!scheme) return { ok: false, reason: '方案不存在' };
+    if (!scheme) return { ok: false, reason: t('store.schemeNotFound') };
     site.activeSchemeId = id;
     await save(profile);
     return { ok: true, id, name: scheme.name };
@@ -124,13 +125,13 @@
     const profile = await load();
     const site = siteOf(profile, origin, true);
     const scheme = schemeById(site, id);
-    if (!scheme) return { ok: false, reason: '方案不存在' };
+    if (!scheme) return { ok: false, reason: t('store.schemeNotFound') };
     const name = String(to || '').trim();
-    if (!name) return { ok: false, reason: '方案名不能为空' };
+    if (!name) return { ok: false, reason: t('store.schemeNameEmpty') };
     if (name === scheme.name) return { ok: true, id, name };
     // 同名方案在下拉框里分不清切到了哪个，所以名字仍然要求唯一——这是展示约束，不是身份约束
     if (site.schemes.some((other) => other.name === name)) {
-      return { ok: false, reason: '已存在同名方案' };
+      return { ok: false, reason: t('store.schemeNameExists') };
     }
     scheme.name = name;
     await save(profile);
@@ -140,8 +141,8 @@
   async function deleteScheme(origin, id) {
     const profile = await load();
     const site = siteOf(profile, origin);
-    if (!site || !schemeById(site, id)) return { ok: false, reason: '方案不存在' };
-    if (site.schemes.length <= 1) return { ok: false, reason: '至少要保留一个方案' };
+    if (!site || !schemeById(site, id)) return { ok: false, reason: t('store.schemeNotFound') };
+    if (site.schemes.length <= 1) return { ok: false, reason: t('store.schemeMinOne') };
     site.schemes = site.schemes.filter((scheme) => scheme.id !== id);
     if (site.activeSchemeId === id) site.activeSchemeId = site.schemes[0].id;
     await save(profile);

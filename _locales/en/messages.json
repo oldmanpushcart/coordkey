@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "CoordKey — Keyboard Coordinate Clicker",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Bind keyboard shortcuts to page coordinates: press a key or combo to trigger mouse clicks at specified positions without moving the mouse. Supports click sequences, multiple scheme switching, and coordinate markers. Works on regular web pages and canvas.",
+    "description": "Extension description shown in store and extension manager"
+  },
+  "actionTitle": {
+    "message": "CoordKey: Click to toggle",
+    "description": "Tooltip when hovering over the toolbar icon"
+  }
+}

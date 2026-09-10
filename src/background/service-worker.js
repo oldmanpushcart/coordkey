@@ -1,6 +1,10 @@
-importScripts('../shared/protocol.js');
+importScripts('../shared/protocol.js', '../shared/i18n.js', '../shared/locale-zh.js', '../shared/locale-en.js');
 
 const { STORAGE_KEY, LEGACY_STORAGE_KEYS, emptyProfile } = self.COORDKEY;
+const CK = self.COORDKEY;
+const { t } = CK.i18n;
+
+CK.i18n.init();
 
 // SW 只读一个布尔、只写一个布尔，绝不把整份 profile 归一化后写回：
 // 它看不懂内容脚本（或更新版本的扩展）存下的字段，整体重写会把这些字段抹掉。
@@ -15,11 +19,16 @@ function isEnabled(raw) {
   return !raw || !raw.settings || raw.settings.enabled !== false;
 }
 
+async function syncLang() {
+  const raw = await readRaw();
+  CK.i18n.init(raw && raw.settings && raw.settings.lang);
+}
+
 function updateBadge(enabled) {
   chrome.action.setBadgeText({ text: enabled ? '' : 'OFF' });
   chrome.action.setBadgeBackgroundColor({ color: '#c0392b' });
   chrome.action.setTitle({
-    title: enabled ? 'CoordKey：已启用（点击全局停用）' : 'CoordKey：已停用（点击启用）',
+    title: enabled ? t('sw.enabledTitle') : t('sw.disabledTitle'),
   });
 }
 
@@ -32,14 +41,17 @@ chrome.action.onClicked.addListener(async () => {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local' || !changes[STORAGE_KEY]) return;
-  updateBadge(isEnabled(changes[STORAGE_KEY].newValue));
+  const newValue = changes[STORAGE_KEY].newValue;
+  if (newValue && newValue.settings) syncLang();
+  updateBadge(isEnabled(newValue));
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
   // 换 STORAGE_KEY 之前遗留的测试期数据，留着只会白占空间
   await chrome.storage.local.remove(LEGACY_STORAGE_KEYS);
   if (!(await readRaw())) await chrome.storage.local.set({ [STORAGE_KEY]: emptyProfile() });
+  await syncLang();
   updateBadge(isEnabled(await readRaw()));
 });
 
-readRaw().then((raw) => updateBadge(isEnabled(raw)));
+syncLang().then(() => readRaw().then((raw) => updateBadge(isEnabled(raw))));

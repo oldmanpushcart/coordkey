@@ -1,15 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "CoordKey — 键盘坐标点击",
+  "name": "__MSG_extName__",
   "version": "1.0.0",
-  "description": "把键盘快捷键绑定到页面坐标：按下单键或组合键即在指定位置触发鼠标点击，无需移动鼠标。支持顺序连点组、多套方案切换与坐标标记浮层，普通网页与 canvas 页面通用。",
+  "description": "__MSG_extDescription__",
+  "default_locale": "zh_CN",
   "permissions": ["storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background/service-worker.js"
   },
   "action": {
-    "default_title": "CoordKey：点击切换总开关",
+    "default_title": "__MSG_actionTitle__",
     "default_icon": {
       "16": "assets/icons/icon16.png",
       "32": "assets/icons/icon32.png",
@@ -28,6 +29,9 @@
       "matches": ["<all_urls>"],
       "js": [
         "src/shared/protocol.js",
+        "src/shared/i18n.js",
+        "src/shared/locale-zh.js",
+        "src/shared/locale-en.js",
         "src/content/00-namespace.js",
         "src/content/core/hotkeys.js",
         "src/content/core/store.js",

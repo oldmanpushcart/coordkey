@@ -10,6 +10,9 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const FILES = [
   'src/shared/protocol.js',
+  'src/shared/i18n.js',
+  'src/shared/locale-zh.js',
+  'src/shared/locale-en.js',
   'src/content/00-namespace.js',
   'src/content/core/hotkeys.js',
   'src/content/core/store.js',

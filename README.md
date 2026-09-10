@@ -11,6 +11,8 @@
 ![Permissions](https://img.shields.io/badge/permissions-storage%20only-success.svg)
 ![Build](https://img.shields.io/badge/build-none-brightgreen.svg)
 
+**[中文](README.md)** | **[English](README.en.md)**
+
 ---
 
 ## 🖼️ 界面预览
@@ -34,13 +36,13 @@ CoordKey 提供直观的可视化操作界面，让你在录制坐标和管理�
   </tr>
   <tr>
     <td align="center" style="border:none;">
-      <img src="./docs/image/screen1.png" width="280" alt="主面板界面" style="border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+      <img src="./docs/image/screen-cn-1.png" width="280" alt="主面板界面" style="border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
     </td>
     <td align="center" style="border:none;">
-      <img src="./docs/image/screen2.png" width="280" alt="录制界面" style="border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+      <img src="./docs/image/screen-cn-2.png" width="280" alt="录制界面" style="border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
     </td>
     <td align="center" style="border:none;">
-      <img src="./docs/image/screen3.png" width="280" alt="设置界面" style="border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+      <img src="./docs/image/screen-cn-3.png" width="280" alt="设置界面" style="border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
     </td>
   </tr>
 </table>
@@ -70,6 +72,7 @@ CoordKey 提供直观的可视化操作界面，让你在录制坐标和管理�
 ### 2. 顺序连点组 (Macro)
 *   **多步录制**：一次录制多个坐标点，按顺序自动执行。
 *   **智能间隔**：支持设置全局统一间隔，也支持为每一步设置**逐步间隔**（例如：点击“保存”后等待 2秒 页面刷新，再点击下一步）。
+*   **重复执行**：可为每组设置执行**次数**与轮间间隔，适合需要循环触发的场景（如连点、批量操作）。
 *   **防误触机制**：播放中再次按键可取消剩余步骤；标签页切后台自动停止。
 
 ### 3. 多方案适配 (Responsive)

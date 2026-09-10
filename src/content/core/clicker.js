@@ -1,5 +1,6 @@
 (() => {
   const CK = self.COORDKEY;
+  const t = (key, params) => CK.i18n.t(key, params);
 
   // ruleId -> run。运行表用于快捷键的 播放→中断→恢复 状态切换。
   const runs = new Map();
@@ -65,7 +66,7 @@
 
     if (!canvas) {
       if (Number.isFinite(step.x) && Number.isFinite(step.y)) {
-        warnings.push('页面上找不到 canvas，已使用录制时的原始坐标');
+        warnings.push(t('clicker.noCanvas'));
         return { x: step.x, y: step.y, canvas: null, warnings };
       }
       return null;
@@ -73,7 +74,7 @@
 
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) {
-      return { x: step.x, y: step.y, canvas, warnings: ['canvas 当前尺寸为 0，无法反算坐标'] };
+      return { x: step.x, y: step.y, canvas, warnings: [t('clicker.canvasZero')] };
     }
 
     // 录制时页面上没有 canvas 的点不带归一化坐标，直接退回原始像素
@@ -83,7 +84,7 @@
         x: step.x,
         y: step.y,
         canvas,
-        warnings: ['规则缺少归一化坐标，已使用录制时的原始坐标'],
+        warnings: [t('clicker.noNormalized')],
       };
     }
 
@@ -93,15 +94,15 @@
     if (env) {
       if (Math.abs(window.innerWidth - env.vw) > 2 || Math.abs(window.innerHeight - env.vh) > 2) {
         warnings.push(
-          `窗口尺寸已变化（录制时 ${env.vw}×${env.vh}，当前 ${window.innerWidth}×${window.innerHeight}）`,
+          t('clicker.windowResized', { ow: env.vw, oh: env.vh, nw: window.innerWidth, nh: window.innerHeight }),
         );
       }
       if (env.dpr && Math.abs(window.devicePixelRatio - env.dpr) > 0.01) {
-        warnings.push('屏幕缩放比例已变化');
+        warnings.push(t('clicker.dprChanged'));
       }
     }
     if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) {
-      warnings.push('目标点在当前视口外，点击可能无效');
+      warnings.push(t('clicker.outOfViewport'));
     }
 
     return { x, y, canvas, warnings };
@@ -203,7 +204,7 @@
   async function perform(rule, settings, onStep, totalRounds, remaining) {
     const steps = Array.isArray(rule.steps) ? rule.steps : [];
     if (!steps.length) {
-      return { ok: false, reason: '规则没有任何点击步骤', warnings: [], steps: [], cancelled: false };
+      return { ok: false, reason: t('clicker.noSteps'), warnings: [], steps: [], cancelled: false };
     }
 
     const holdMs = settings && Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 0;
@@ -226,7 +227,7 @@
         if (run.cancelled) break;
         const target = resolveTarget(steps[i], rule.env);
         if (!target) {
-          warnings.push(`第 ${i + 1} 个点无法解析坐标，已跳过`);
+          warnings.push(t('clicker.stepParseFail', { n: i + 1 }));
           continue;
         }
         for (const warning of target.warnings || []) {
@@ -250,7 +251,7 @@
       ok: allDone.length > 0,
       cancelled: run.cancelled,
       paused: run.paused,
-      reason: allDone.length ? '' : '没有成功点击任何位置',
+      reason: allDone.length ? '' : t('clicker.noClickSuccess'),
       warnings,
       steps: allDone,
     };
@@ -275,7 +276,7 @@
   // - 运行中未暂停 → 立即中断（当前步骤完成后停止）
   // - 已暂停 → 恢复（从第一步开始，剩余次数继续）
   async function trigger(rule, settings, onStep) {
-    if (!rule) return { ok: false, reason: '规则不存在', warnings: [], steps: [] };
+    if (!rule) return { ok: false, reason: t('clicker.ruleNotFound'), warnings: [], steps: [] };
     const running = rule.id ? runs.get(rule.id) : null;
     if (running) {
       if (running.paused) {
@@ -287,7 +288,7 @@
     }
     const raw = Number(rule.repeatCount);
     const totalRounds = Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 1;
-    if (totalRounds <= 0) return { ok: false, reason: '执行次数为 0', warnings: [], steps: [] };
+    if (totalRounds <= 0) return { ok: false, reason: t('clicker.zeroCount'), warnings: [], steps: [] };
     return perform(rule, settings, onStep, totalRounds, totalRounds);
   }
 

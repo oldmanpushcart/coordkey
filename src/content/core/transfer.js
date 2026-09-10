@@ -1,5 +1,6 @@
 (() => {
   const CK = self.COORDKEY;
+  const t = (key, params) => CK.i18n.t(key, params);
 
   async function exportAll() {
     const profile = await CK.store.load();
@@ -20,7 +21,7 @@
     anchor.click();
     anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    CK.hint.toast('设置已导出为 JSON 文件', 'ok');
+    CK.hint.toast(t('transfer.exported'), 'ok');
   }
 
   // 判据与播放引擎对齐：clicker.resolveTarget 只要 x/y 是有限像素就能点。
@@ -46,17 +47,15 @@
     try {
       data = JSON.parse(text);
     } catch {
-      return { error: '不是合法的 JSON 文件' };
+      return { error: t('transfer.invalidJson') };
     }
-    if (!data || typeof data !== 'object') return { error: '文件格式不正确' };
+    if (!data || typeof data !== 'object') return { error: t('transfer.invalidFormat') };
 
     const version = CK.profileVersion(data);
-    if (!version) return { error: '文件缺少有效的配置版本号' };
+    if (!version) return { error: t('transfer.noVersion') };
     if (version > CK.VERSION) {
       return {
-        error:
-          `这份配置来自更新版本的 CoordKey（配置 v${version}，当前支持到 v${CK.VERSION}），` +
-          '请升级扩展后再导入',
+        error: t('transfer.tooNew', { file: version, cur: CK.VERSION }),
       };
     }
 
@@ -72,7 +71,7 @@
       // 规则全被过滤掉的站点不导入，否则存储里会多出一堆空站点
       if (site.schemes.some((scheme) => scheme.rules.length)) sites[origin] = site;
     }
-    if (!ruleCount) return { error: '文件中没有任何有效规则' };
+    if (!ruleCount) return { error: t('transfer.noRules') };
 
     return {
       ok: true,
@@ -103,7 +102,7 @@
         if (!file) return done(null);
         const reader = new FileReader();
         reader.onload = () => done(parse(String(reader.result)));
-        reader.onerror = () => done({ error: '读取文件失败' });
+        reader.onerror = () => done({ error: t('transfer.readFail') });
         reader.readAsText(file);
       });
       input.addEventListener('cancel', () => done(null));
@@ -170,13 +169,13 @@
     const box = document.createElement('div');
     box.className = 'ck-import-box';
     box.innerHTML = `
-      <div>检测到 <b>${result.siteCount}</b> 个站点、<b>${result.ruleCount}</b> 条规则。</div>
+      <div>${t('transfer.detected', { sites: result.siteCount, rules: result.ruleCount })}</div>
       <div class="ck-row2">
-        <button class="ck-btn" type="button" data-mode="overwrite">覆盖已有</button>
-        <button class="ck-btn" type="button" data-mode="skip">跳过已有</button>
+        <button class="ck-btn" type="button" data-mode="overwrite">${t('transfer.overwrite')}</button>
+        <button class="ck-btn" type="button" data-mode="skip">${t('transfer.skip')}</button>
       </div>
       <div class="ck-row2">
-        <button class="ck-btn" type="button" data-mode="cancel">取消</button>
+        <button class="ck-btn" type="button" data-mode="cancel">${t('transfer.cancel')}</button>
       </div>`;
     slot.appendChild(box);
 
@@ -187,7 +186,7 @@
       slot.textContent = '';
       if (mode === 'cancel') return;
       await applyImport(result, mode);
-      CK.hint.toast(`导入完成（${mode === 'overwrite' ? '覆盖' : '跳过'}策略）`, 'ok');
+      CK.hint.toast(mode === 'overwrite' ? t('transfer.doneOverwrite') : t('transfer.doneSkip'), 'ok');
     });
   }
 

@@ -1,5 +1,6 @@
 (() => {
   const CK = self.COORDKEY;
+  const t = (key, params) => CK.i18n.t(key, params);
 
   const FAB_SVG = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -42,48 +43,49 @@
         <div class="ck-head">
           <span class="ck-title">CoordKey</span>
           <span class="ck-ver"></span>
-          <button class="ck-iconbtn" type="button" data-act="close" title="关闭">×</button>
+          <button class="ck-iconbtn" type="button" data-act="close" title="${t('panel.close')}">×</button>
         </div>
 
         <div class="ck-section">
-          <button class="ck-btn ck-btn-primary" type="button" data-act="record">＋ 录制快捷键（连点多个位置即为顺序点击组）</button>
+          <button class="ck-btn ck-btn-primary" type="button" data-act="record">${t('panel.record')}</button>
           <div class="ck-record-status" hidden></div>
         </div>
 
         <div class="ck-section">
-          <div class="ck-sec-title">方案</div>
+          <div class="ck-sec-title">${t('panel.scheme')}</div>
           <div class="ck-scheme-row">
-            <select class="ck-select" data-scheme="select" title="切换方案"></select>
-            <button class="ck-iconbtn" type="button" data-act="scheme-new" title="新建空方案（快捷键需重新录制）">新建</button>
-            <button class="ck-iconbtn" type="button" data-act="scheme-rename" title="重命名当前方案">改名</button>
-            <button class="ck-iconbtn" type="button" data-act="scheme-delete" title="删除当前方案">删除</button>
+            <select class="ck-select" data-scheme="select" title="${t('panel.schemeSwitch')}"></select>
+            <button class="ck-iconbtn" type="button" data-act="scheme-new" title="${t('panel.schemeNewTip')}">${t('panel.schemeNew')}</button>
+            <button class="ck-iconbtn" type="button" data-act="scheme-rename" title="${t('panel.schemeRenameTip')}">${t('panel.schemeRename')}</button>
+            <button class="ck-iconbtn" type="button" data-act="scheme-delete" title="${t('panel.schemeDeleteTip')}">${t('panel.schemeDelete')}</button>
           </div>
-          <div class="ck-scheme-hint">窗口尺寸或布局不同时切换方案，各方案的快捷键互不干扰；新建的方案是空的，需要重新录制。</div>
+          <div class="ck-scheme-hint">${t('panel.schemeHint')}</div>
         </div>
 
         <div class="ck-section">
           <div class="ck-sec-title ck-sec-head">
-            <span>方案「<span class="ck-scheme-name"></span>」的规则<span class="ck-rule-count"></span> · <span class="ck-origin"></span></span>
-            <button class="ck-mini" type="button" data-act="toggle-list" title="收起 / 展开快捷键列表，收起后不用滚动就能看到下面的设置"></button>
+            <span class="ck-rules-title"></span><span class="ck-rule-count"></span> · <span class="ck-origin"></span>
+            <button class="ck-mini" type="button" data-act="toggle-list" title="${t('panel.toggleList')}"></button>
           </div>
           <div class="ck-rules"></div>
         </div>
 
         <div class="ck-section ck-row2">
-          <button class="ck-btn" type="button" data-act="export">导出设置</button>
-          <button class="ck-btn" type="button" data-act="import">导入设置</button>
+          <button class="ck-btn" type="button" data-act="export">${t('panel.export')}</button>
+          <button class="ck-btn" type="button" data-act="import">${t('panel.import')}</button>
         </div>
         <div class="ck-import-slot"></div>
 
         <div class="ck-section">
-          <div class="ck-sec-title">设置</div>
-          <label class="ck-switch-row"><input type="checkbox" data-setting="enabled"><span>总开关</span></label>
-          <label class="ck-switch-row"><input type="checkbox" data-setting="skipInInput"><span>输入框内不触发</span></label>
-          <label class="ck-switch-row" title="勾选：录制时的点击会真实传给页面，可以先操作页面切到别的界面再点下一个位置。取消：点击被扩展吞掉，页面不会响应，只用来取坐标。"><input type="checkbox" data-setting="recordPassthrough"><span>录制时点击照常生效</span></label>
-          <label class="ck-switch-row"><input type="checkbox" data-setting="showMarkers"><span>显示坐标标记浮层</span></label>
-          <label class="ck-field"><span>按住时长</span><span><input type="number" data-setting="holdMs" min="0" max="2000" step="10"> ms</span></label>
-          <label class="ck-field"><span>浮现透明度</span><span><input type="range" data-setting="hintOpacity" min="0.05" max="1" step="0.05"><span class="ck-val"></span></span></label>
-          <label class="ck-field"><span>浮现时长</span><span><input type="number" data-setting="hintDurationMs" min="200" max="5000" step="100"> ms</span></label>
+          <div class="ck-sec-title">${t('panel.settings')}</div>
+          <label class="ck-switch-row"><input type="checkbox" data-setting="enabled"><span>${t('panel.enabled')}</span></label>
+          <label class="ck-switch-row"><input type="checkbox" data-setting="skipInInput"><span>${t('panel.skipInInput')}</span></label>
+          <label class="ck-switch-row" title="${t('panel.recordPassthroughTip')}"><input type="checkbox" data-setting="recordPassthrough"><span>${t('panel.recordPassthrough')}</span></label>
+          <label class="ck-switch-row"><input type="checkbox" data-setting="showMarkers"><span>${t('panel.showMarkers')}</span></label>
+          <label class="ck-field"><span>${t('panel.holdMs')}</span><span><input type="number" data-setting="holdMs" min="0" max="2000" step="10"> ms</span></label>
+          <label class="ck-field"><span>${t('panel.hintOpacity')}</span><span><input type="range" data-setting="hintOpacity" min="0.05" max="1" step="0.05"><span class="ck-val"></span></span></label>
+          <label class="ck-field"><span>${t('panel.hintDuration')}</span><span><input type="number" data-setting="hintDurationMs" min="200" max="5000" step="100"> ms</span></label>
+          <label class="ck-field"><span>${t('panel.language')}</span><span><select class="ck-select" data-setting="lang"><option value="">${t('panel.langAuto')}</option><option value="zh">中文</option><option value="en">English</option></select></span></label>
         </div>
       </div>`;
     root.appendChild(box);
@@ -100,7 +102,7 @@
       listToggle: box.querySelector('[data-act="toggle-list"]'),
       origin: box.querySelector('.ck-origin'),
       scheme: box.querySelector('[data-scheme="select"]'),
-      schemeName: box.querySelector('.ck-scheme-name'),
+      rulesTitle: box.querySelector('.ck-rules-title'),
       schemeDelete: box.querySelector('[data-act="scheme-delete"]'),
       importSlot: box.querySelector('.ck-import-slot'),
       version: box.querySelector('.ck-ver'),
@@ -116,7 +118,7 @@
       const state = CK.clicker.activeState();
       if (state && !state.paused) {
         CK.clicker.cancelAll();
-        CK.hint.toast('已中断', 'warn', 1800);
+        CK.hint.toast(t('panel.cancelled'), 'warn', 1800);
         return;
       }
       toggle();
@@ -212,12 +214,12 @@
 
     if (act === 'test') return performTest(rule);
     if (act === 'rename') {
-      const name = window.prompt('规则名称', rule.name || '');
+      const name = window.prompt(t('panel.renameRulePrompt'), rule.name || '');
       if (name != null && name.trim()) CK.store.patchRule(CK.origin, id, { name: name.trim() });
       return;
     }
     if (act === 'delete') {
-      if (window.confirm(`删除快捷键「${CK.hotkeys.comboLabel(rule.shortcut)}」？`)) {
+      if (window.confirm(t('panel.confirmDeleteRule', { combo: CK.hotkeys.comboLabel(rule.shortcut) }))) {
         CK.store.removeRule(CK.origin, id);
       }
     }
@@ -225,11 +227,11 @@
 
   async function onSchemeAction(act) {
     if (act === 'scheme-new') {
-      const suggested = `方案 ${CK.store.schemesFor(CK.origin).length + 1}`;
-      const name = window.prompt('新方案名称（新方案是空的，快捷键需要重新录制）', suggested);
+      const suggested = t('panel.schemeNewSuggest', { n: CK.store.schemesFor(CK.origin).length + 1 });
+      const name = window.prompt(t('panel.schemeNewPrompt'), suggested);
       if (name == null) return;
       const res = await CK.store.createScheme(CK.origin, name.trim());
-      if (res.ok) CK.hint.toast(`已创建并切换到方案「${res.name}」，还没有快捷键，点上方按钮开始录制`, 'ok', 3000);
+      if (res.ok) CK.hint.toast(t('panel.schemeCreated', { name: res.name }), 'ok', 3000);
       return;
     }
 
@@ -237,7 +239,7 @@
     if (!active) return;
 
     if (act === 'scheme-rename') {
-      const name = window.prompt('重命名方案', active.name);
+      const name = window.prompt(t('panel.schemeRenamePrompt'), active.name);
       if (name == null) return;
       const res = await CK.store.renameScheme(CK.origin, active.id, name);
       if (!res.ok) CK.hint.toast(res.reason, 'error');
@@ -246,10 +248,10 @@
 
     if (act === 'scheme-delete') {
       const count = CK.store.rulesFor(CK.origin).length;
-      const detail = count ? `其中的 ${count} 条快捷键会一并删除。` : '';
-      if (!window.confirm(`删除方案「${active.name}」？${detail}`)) return;
+      const detail = count ? t('panel.schemeDeleteDetail', { count }) : '';
+      if (!window.confirm(t('panel.schemeDeleteConfirm', { name: active.name, detail }))) return;
       const res = await CK.store.deleteScheme(CK.origin, active.id);
-      if (res.ok) CK.hint.toast(`已删除方案「${active.name}」`, 'ok');
+      if (res.ok) CK.hint.toast(t('panel.schemeDeleted', { name: active.name }), 'ok');
       else CK.hint.toast(res.reason, 'error');
     }
   }
@@ -266,11 +268,11 @@
       });
     });
     if (!res.ok) {
-      CK.hint.toast(res.reason || '触发失败', 'error');
+      CK.hint.toast(res.reason || t('panel.triggerFail'), 'error');
       return;
     }
-    if (res.paused) CK.hint.toast('已中断', 'warn', 1800);
-    else if (res.resumed) CK.hint.toast('已恢复执行', 'ok', 1200);
+    if (res.paused) CK.hint.toast(t('panel.cancelled'), 'warn', 1800);
+    else if (res.resumed) CK.hint.toast(t('panel.resumed'), 'ok', 1200);
     for (const warning of res.warnings) CK.hint.toast(warning, 'warn');
   }
 
@@ -284,13 +286,13 @@
       try {
         res = await CK.store.setActiveScheme(CK.origin, id);
       } catch (error) {
-        CK.hint.toast(`切换方案失败：${(error && error.message) || error}`, 'error', 5000);
+        CK.hint.toast(t('panel.switchFail', { reason: (error && error.message) || error }), 'error', 5000);
       }
       if (res && res.ok) {
         const count = CK.store.rulesFor(CK.origin).length;
-        CK.hint.toast(`已切换到方案「${res.name}」，${count} 条快捷键`, 'ok', 2400);
+        CK.hint.toast(t('panel.switched', { name: res.name, count }), 'ok', 2400);
       } else if (res) {
-        CK.hint.toast(res.reason || '切换方案失败', 'error', 5000);
+        CK.hint.toast(res.reason || t('panel.switchFailGeneric'), 'error', 5000);
       }
       // 成功失败都要按存储里的真实状态重画：失败时下拉框必须弹回仍然生效的方案，
       // 不能停在一个没生效的选项上，否则看起来就像「切换没反应」。
@@ -357,9 +359,13 @@
     if (!input) return;
     const key = input.dataset.setting;
     const value =
-      input.type === 'checkbox' ? input.checked : Number(input.value);
+      input.type === 'checkbox' ? input.checked : input.type === 'select-one' ? input.value : Number(input.value);
     if (input.type === 'number' && !Number.isFinite(value)) return;
-    CK.store.updateSettings({ [key]: value });
+    CK.store.updateSettings({ [key]: key === 'lang' ? (value || null) : value });
+    if (key === 'lang') {
+      CK.i18n.setLang(value || CK.i18n.detectLang());
+      rebuildPanel();
+    }
   }
 
   function onInput(event) {
@@ -385,7 +391,8 @@
     }
     // 逐个 append 时单选框会先把第一项选中，只靠 option.selected 可能停在错误的方案上
     if (active) refs.scheme.value = active.id;
-    refs.schemeName.textContent = active ? active.name : CK.DEFAULT_SCHEME;
+    const schemeName = active ? active.name : CK.DEFAULT_SCHEME;
+    refs.rulesTitle.textContent = t('panel.rulesOf', { name: schemeName });
     refs.schemeDelete.disabled = schemes.length <= 1;
   }
 
@@ -397,7 +404,7 @@
   }
 
   function summaryOf(steps) {
-    if (steps.length > 1) return `${steps.length} 个点`;
+    if (steps.length > 1) return t('panel.points', { count: steps.length });
     return steps.length ? stepCoord(steps[0]) : '—';
   }
 
@@ -405,7 +412,7 @@
     const row = document.createElement('label');
     row.className = 'ck-rule-interval';
     const caption = document.createElement('span');
-    caption.textContent = '统一间隔';
+    caption.textContent = t('panel.interval');
     const input = document.createElement('input');
     input.type = 'number';
     input.min = '0';
@@ -413,7 +420,7 @@
     input.step = '10';
     input.value = String(rule.intervalMs);
     input.dataset.interval = rule.id;
-    input.title = '组内相邻两次点击的默认间隔；展开步骤后可为单步单独设置';
+    input.title = t('panel.intervalTip');
     const unit = document.createElement('span');
     unit.textContent = 'ms';
     row.append(caption, input, unit);
@@ -426,7 +433,7 @@
     wrap.className = 'ck-repeat-inputs';
 
     const countLabel = document.createElement('span');
-    countLabel.textContent = '次数';
+    countLabel.textContent = t('panel.repeatLabel');
     const countInput = document.createElement('input');
     countInput.type = 'number';
     countInput.min = '1';
@@ -434,15 +441,15 @@
     countInput.step = '1';
     countInput.value = String(rule.repeatCount ?? 1);
     countInput.dataset.repeatCount = rule.id;
-    countInput.title = '总共执行几轮（1 = 只播一次）';
+    countInput.title = t('panel.repeatTip');
     const countUnit = document.createElement('span');
-    countUnit.textContent = '次';
+    countUnit.textContent = t('panel.repeatUnit');
 
     const sep = document.createElement('span');
     sep.className = 'ck-repeat-sep';
 
     const gapLabel = document.createElement('span');
-    gapLabel.textContent = '间隔';
+    gapLabel.textContent = t('panel.repeatGap');
     const gapInput = document.createElement('input');
     gapInput.type = 'number';
     gapInput.min = '0';
@@ -450,7 +457,7 @@
     gapInput.step = '100';
     gapInput.placeholder = '1000';
     gapInput.dataset.repeatInterval = rule.id;
-    gapInput.title = '每轮之间的等待；留空 = 1000ms';
+    gapInput.title = t('panel.repeatGapTip');
     if (rule.repeatIntervalMs != null) gapInput.value = String(rule.repeatIntervalMs);
     const gapUnit = document.createElement('span');
     gapUnit.textContent = 'ms';
@@ -479,7 +486,7 @@
       if (index === steps.length - 1) {
         const tail = document.createElement('span');
         tail.className = 'ck-step-tail';
-        tail.textContent = '最后一步';
+        tail.textContent = t('panel.lastStep');
         row.appendChild(tail);
         box.appendChild(row);
         return;
@@ -488,7 +495,7 @@
       const own = Number(step.gapMs);
       const custom = Number.isFinite(own) && own >= 0;
       const caption = document.createElement('span');
-      caption.textContent = '等待';
+      caption.textContent = t('panel.wait');
       const input = document.createElement('input');
       input.type = 'number';
       input.min = '0';
@@ -497,7 +504,7 @@
       input.value = String(custom ? own : rule.intervalMs);
       input.dataset.gapRule = rule.id;
       input.dataset.gapIndex = String(index);
-      input.title = '本步点击后到下一步点击前的等待；留空 = 跟随统一间隔';
+      input.title = t('panel.waitTip');
       if (custom) input.dataset.custom = 'true';
       const unit = document.createElement('span');
       unit.textContent = 'ms';
@@ -510,8 +517,8 @@
         reset.dataset.act = 'reset-gap';
         reset.dataset.id = rule.id;
         reset.dataset.index = String(index);
-        reset.textContent = '重置';
-        reset.title = '恢复为统一间隔';
+        reset.textContent = t('panel.reset');
+        reset.title = t('panel.resetTip');
         row.appendChild(reset);
       }
 
@@ -524,12 +531,12 @@
   function renderRules() {
     const rules = CK.store.rulesFor(CK.origin);
     refs.origin.textContent = CK.origin;
-    refs.ruleCount.textContent = rules.length ? `（${rules.length} 条）` : '';
+    refs.ruleCount.textContent = rules.length ? t('panel.ruleCount', { count: rules.length }) : '';
     // 收起状态跨方案保留，而新建的方案是空的：空方案也要留着「展开列表」按钮，否则回不到列表
     refs.listToggle.hidden = !rules.length && !listCollapsed;
     refs.listToggle.textContent = listCollapsed
-      ? `展开列表${rules.length ? `（${rules.length}）` : ''}`
-      : '收起列表';
+      ? `${t('panel.expandList')}${rules.length ? t('panel.ruleCount', { count: rules.length }) : ''}`
+      : t('panel.collapseList');
     refs.rules.hidden = listCollapsed;
     refs.rules.textContent = '';
     if (listCollapsed) return;
@@ -537,7 +544,7 @@
     if (!rules.length) {
       const empty = document.createElement('div');
       empty.className = 'ck-empty';
-      empty.textContent = '当前方案还没有绑定任何快捷键，点上方「录制快捷键」开始录入。';
+      empty.textContent = t('panel.empty');
       refs.rules.appendChild(empty);
       return;
     }
@@ -555,7 +562,7 @@
       kbd.textContent = CK.hotkeys.comboLabel(rule.shortcut);
       const name = document.createElement('span');
       name.className = 'ck-rule-name';
-      name.textContent = rule.name || '未命名';
+      name.textContent = rule.name || t('panel.unnamed');
       const coord = document.createElement('span');
       coord.className = 'ck-rule-coord';
       coord.textContent = summaryOf(steps);
@@ -575,7 +582,7 @@
       testBtn.className = 'ck-mini';
       testBtn.dataset.act = 'test';
       testBtn.dataset.id = rule.id;
-      testBtn.textContent = '测试';
+      testBtn.textContent = t('panel.test');
       actions.appendChild(testBtn);
 
       if (multi) {
@@ -584,7 +591,7 @@
         stepsToggle.className = 'ck-mini ck-section-toggle';
         stepsToggle.dataset.act = 'toggle-steps';
         stepsToggle.dataset.id = rule.id;
-        stepsToggle.textContent = `步骤 ${steps.length} ${expanded.has(rule.id) ? '▾' : '▸'}`;
+        stepsToggle.textContent = `${t('panel.steps', { count: steps.length })} ${expanded.has(rule.id) ? '▾' : '▸'}`;
         actions.appendChild(stepsToggle);
       }
 
@@ -595,7 +602,7 @@
       repeatToggle.dataset.id = rule.id;
       const rc = rule.repeatCount ?? 1;
       const rArrow = repeatExpanded.has(rule.id) ? '▾' : '▸';
-      repeatToggle.textContent = `次数 ${rc} ${rArrow}`;
+      repeatToggle.textContent = `${t('panel.repeat', { count: rc })} ${rArrow}`;
       actions.appendChild(repeatToggle);
 
       const renameBtn = document.createElement('button');
@@ -603,7 +610,7 @@
       renameBtn.className = 'ck-mini';
       renameBtn.dataset.act = 'rename';
       renameBtn.dataset.id = rule.id;
-      renameBtn.textContent = '改名';
+      renameBtn.textContent = t('panel.rename');
       actions.appendChild(renameBtn);
 
       const deleteBtn = document.createElement('button');
@@ -611,7 +618,7 @@
       deleteBtn.className = 'ck-mini';
       deleteBtn.dataset.act = 'delete';
       deleteBtn.dataset.id = rule.id;
-      deleteBtn.textContent = '删除';
+      deleteBtn.textContent = t('panel.delete');
       actions.appendChild(deleteBtn);
 
       row.appendChild(actions);
@@ -628,6 +635,7 @@
       const key = input.dataset.setting;
       const value = profile.settings[key];
       if (input.type === 'checkbox') input.checked = !!value;
+      else if (input.tagName === 'SELECT') input.value = key === 'lang' ? (value || '') : value;
       else input.value = value;
       if (key === 'hintOpacity') {
         const val = input.closest('.ck-field').querySelector('.ck-val');
@@ -677,6 +685,17 @@
       delete refs.fab.dataset.running;
       delete refs.fab.dataset.paused;
     }
+  }
+
+  function rebuildPanel() {
+    if (!host) return;
+    const wasOpen = CK.state.panelOpen;
+    host.remove();
+    host = null;
+    root = null;
+    refs = null;
+    build();
+    if (wasOpen) open();
   }
 
   CK.panel = {

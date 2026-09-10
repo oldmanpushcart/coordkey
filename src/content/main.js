@@ -1,10 +1,11 @@
 (() => {
   const CK = self.COORDKEY;
+  const t = (key, params) => CK.i18n.t(key, params);
 
   // 坐标以主框架视口为基准，子框架内无法正确换算，直接退出
   if (window.top !== window.self) {
     setTimeout(
-      () => CK.hint.toast('CoordKey 暂不支持在 iframe 内运行：请直接在顶层标签页打开目标页面。', 'error', 8000),
+      () => CK.hint.toast(t('main.iframeNotSupported'), 'error', 8000),
       1500,
     );
     return;
@@ -28,11 +29,11 @@
       });
     });
     if (!res.ok) {
-      CK.hint.toast(res.reason || '触发失败', 'error');
+      CK.hint.toast(res.reason || t('panel.triggerFail'), 'error');
       return;
     }
-    if (res.paused) CK.hint.toast('已中断', 'warn', 1800);
-    else if (res.resumed) CK.hint.toast('已恢复执行', 'ok', 1200);
+    if (res.paused) CK.hint.toast(t('panel.cancelled'), 'warn', 1800);
+    else if (res.resumed) CK.hint.toast(t('panel.resumed'), 'ok', 1200);
     for (const warning of res.warnings) CK.hint.toast(warning, 'warn');
   }
 
@@ -77,12 +78,13 @@
 
   (async function init() {
     await CK.store.load();
+    const profile = CK.store.current();
+    CK.i18n.init(profile && profile.settings && profile.settings.lang);
     // 数据来自更新版本的 CoordKey 时 store 转为只读，不明说用户会以为改动保存了
     const foreign = CK.store.foreignVersion();
     if (foreign) {
       CK.hint.toast(
-        `当前配置由更新版本的 CoordKey 写入（配置 v${foreign}，本版本最高支持 v${CK.VERSION}）。` +
-          '为避免写坏看不懂的数据，本次会话的改动不会保存；扩展图标上的总开关仍然可用。',
+        t('main.foreignVersion', { foreign, cur: CK.VERSION }),
         'error',
         12000,
       );

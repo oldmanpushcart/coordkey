@@ -27,6 +27,8 @@
     showMarkers: true,
     hintOpacity: 0.3,
     hintDurationMs: 900,
+    // null = 跟随浏览器语言；用户手动选过后存 'zh' / 'en'
+    lang: null,
   };
 
   const manifest =

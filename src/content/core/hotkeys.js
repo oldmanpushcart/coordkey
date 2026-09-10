@@ -1,5 +1,6 @@
 (() => {
   const CK = self.COORDKEY;
+  const t = (key, params) => CK.i18n.t(key, params);
 
   const MODIFIER_CODES = new Set([
     'ControlLeft', 'ControlRight',
@@ -88,11 +89,11 @@
     if (RESERVED.has(id)) {
       return {
         ok: false,
-        reason: `${comboLabel(combo)} 是浏览器或系统保留的快捷键，页面永远收不到，请换一个按键或组合。`,
+        reason: t('hotkeys.reserved', { combo: comboLabel(combo) }),
       };
     }
     if (combo.code === 'Escape') {
-      return { ok: false, reason: 'Escape 被保留用于取消录制和关闭面板。' };
+      return { ok: false, reason: t('hotkeys.escapeReserved') };
     }
     return { ok: true, id };
   }
