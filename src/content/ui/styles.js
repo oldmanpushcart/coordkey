@@ -47,9 +47,12 @@
       max-height: min(600px, calc(100vh - 90px));
       overflow-y: auto;
       background: rgba(22, 25, 38, 0.97);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      /* 亮环管深色页面、暗投影管浅色页面：单靠其一，总有一种背景下轮廓会消失 */
+      border: 1px solid rgba(255, 255, 255, 0.24);
       border-radius: 12px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        0 12px 40px rgba(0, 0, 0, 0.5);
       padding: 14px;
       display: none;
     }
