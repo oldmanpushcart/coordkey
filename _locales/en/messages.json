@@ -4,7 +4,7 @@
     "description": "Extension name"
   },
   "extDescription": {
-    "message": "Bind keyboard shortcuts to page coordinates: press a key or combo to trigger mouse clicks at specified positions without moving the mouse. Supports click sequences, multiple scheme switching, and coordinate markers. Works on regular web pages and canvas.",
+    "message": "Bind keyboard shortcuts to screen coordinates. Press a key to click at recorded positions. Supports click sequences, multi-scheme layouts, and markers. Works on web pages and canvas.",
     "description": "Extension description shown in store and extension manager"
   },
   "actionTitle": {
