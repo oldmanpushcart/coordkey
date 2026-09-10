@@ -16,6 +16,8 @@
   let refs = null;
   // 规则行「展开步骤」的状态要跨重渲染保留，否则改完一步间隔列表就收起来了
   const expanded = new Set();
+  // 重复设置默认收起，需要时再展开
+  const repeatExpanded = new Set();
   // 整个规则列表的收起状态同样要跨重渲染保留：切方案、改间隔都会触发重画
   let listCollapsed = false;
 
@@ -35,7 +37,7 @@
     const box = document.createElement('div');
     box.className = 'ck-root';
     box.innerHTML = `
-      <button class="ck-fab" type="button" title="CoordKey" data-state="on">${FAB_SVG}</button>
+      <button class="ck-fab" type="button" title="CoordKey" data-state="on">${FAB_SVG}<span class="ck-fab-badge"></span></button>
       <div class="ck-panel" data-open="false">
         <div class="ck-head">
           <span class="ck-title">CoordKey</span>
@@ -90,6 +92,7 @@
 
     refs = {
       fab: box.querySelector('.ck-fab'),
+      fabBadge: box.querySelector('.ck-fab-badge'),
       panel: box.querySelector('.ck-panel'),
       recordStatus: box.querySelector('.ck-record-status'),
       rules: box.querySelector('.ck-rules'),
@@ -109,7 +112,18 @@
     box.addEventListener('click', onClick);
     box.addEventListener('change', onChange);
     box.addEventListener('input', onInput);
-    refs.fab.addEventListener('click', () => toggle());
+    refs.fab.addEventListener('click', () => {
+      const state = CK.clicker.activeState();
+      if (state && !state.paused) {
+        CK.clicker.cancelAll();
+        CK.hint.toast('已中断', 'warn', 1800);
+        return;
+      }
+      toggle();
+    });
+
+    // 每 200ms 刷新 FAB 角标：显示正在执行的轮次进度
+    setInterval(tick, 200);
 
     // 点击面板外区域收起。Shadow 内容的事件在 document 层会被重定向到宿主，
     // 因此 contains(host) 即可覆盖「点在面板内」的情况。
@@ -163,10 +177,18 @@
       return;
     }
 
-    if (act === 'expand') {
+    if (act === 'toggle-steps') {
       const target = btn.dataset.id;
       if (expanded.has(target)) expanded.delete(target);
       else expanded.add(target);
+      renderRules();
+      return;
+    }
+
+    if (act === 'toggle-repeat') {
+      const target = btn.dataset.id;
+      if (repeatExpanded.has(target)) repeatExpanded.delete(target);
+      else repeatExpanded.add(target);
       renderRules();
       return;
     }
@@ -247,7 +269,8 @@
       CK.hint.toast(res.reason || '触发失败', 'error');
       return;
     }
-    if (res.interrupted) CK.hint.toast('已取消剩余点击', 'warn', 1800);
+    if (res.paused) CK.hint.toast('已中断', 'warn', 1800);
+    else if (res.resumed) CK.hint.toast('已恢复执行', 'ok', 1200);
     for (const warning of res.warnings) CK.hint.toast(warning, 'warn');
   }
 
@@ -302,6 +325,32 @@
         return next;
       });
       CK.store.patchRule(CK.origin, rule.id, { steps });
+      return;
+    }
+    const repeatCountInput = event.target.closest('[data-repeat-count]');
+    if (repeatCountInput) {
+      const value = Number(repeatCountInput.value);
+      if (!Number.isFinite(value) || value < 0) return;
+      CK.store.patchRule(CK.origin, repeatCountInput.dataset.repeatCount, {
+        repeatCount: Math.min(999, Math.floor(value)),
+      });
+      return;
+    }
+    const repeatIntervalInput = event.target.closest('[data-repeat-interval]');
+    if (repeatIntervalInput) {
+      const raw = repeatIntervalInput.value;
+      const cleared = raw.trim() === '';
+      if (!cleared) {
+        const value = Number(raw);
+        if (!Number.isFinite(value) || value < 0) return;
+        CK.store.patchRule(CK.origin, repeatIntervalInput.dataset.repeatInterval, {
+          repeatIntervalMs: Math.min(60000, Math.round(value)),
+        });
+      } else {
+        CK.store.patchRule(CK.origin, repeatIntervalInput.dataset.repeatInterval, {
+          repeatIntervalMs: null,
+        });
+      }
       return;
     }
     const input = event.target.closest('[data-setting]');
@@ -371,7 +420,45 @@
     return row;
   }
 
-  // 展开后的逐步列表：每步可覆盖统一间隔，覆盖值就是「本步点击后到下一步点击前」的等待
+  // 重复设置的输入区：展开后显示在重复按钮下方
+  function repeatInputs(rule) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ck-repeat-inputs';
+
+    const countLabel = document.createElement('span');
+    countLabel.textContent = '次数';
+    const countInput = document.createElement('input');
+    countInput.type = 'number';
+    countInput.min = '1';
+    countInput.max = '999';
+    countInput.step = '1';
+    countInput.value = String(rule.repeatCount ?? 1);
+    countInput.dataset.repeatCount = rule.id;
+    countInput.title = '总共执行几轮（1 = 只播一次）';
+    const countUnit = document.createElement('span');
+    countUnit.textContent = '次';
+
+    const sep = document.createElement('span');
+    sep.className = 'ck-repeat-sep';
+
+    const gapLabel = document.createElement('span');
+    gapLabel.textContent = '间隔';
+    const gapInput = document.createElement('input');
+    gapInput.type = 'number';
+    gapInput.min = '0';
+    gapInput.max = '60000';
+    gapInput.step = '100';
+    gapInput.placeholder = '1000';
+    gapInput.dataset.repeatInterval = rule.id;
+    gapInput.title = '每轮之间的等待；留空 = 1000ms';
+    if (rule.repeatIntervalMs != null) gapInput.value = String(rule.repeatIntervalMs);
+    const gapUnit = document.createElement('span');
+    gapUnit.textContent = 'ms';
+
+    wrap.append(countLabel, countInput, countUnit, sep, gapLabel, gapInput, gapUnit);
+    return wrap;
+  }
+
   function stepsBox(rule) {
     const box = document.createElement('div');
     box.className = 'ck-steps';
@@ -478,30 +565,60 @@
       const multi = steps.length > 1;
       if (multi) {
         row.appendChild(intervalRow(rule));
-        if (expanded.has(rule.id)) row.appendChild(stepsBox(rule));
       }
 
       const actions = document.createElement('div');
       actions.className = 'ck-rule-actions';
-      const acts = [
-        ['test', '测试点击'],
-        ['rename', '改名'],
-        ['delete', '删除'],
-      ];
+
+      const testBtn = document.createElement('button');
+      testBtn.type = 'button';
+      testBtn.className = 'ck-mini';
+      testBtn.dataset.act = 'test';
+      testBtn.dataset.id = rule.id;
+      testBtn.textContent = '测试';
+      actions.appendChild(testBtn);
+
       if (multi) {
-        acts.push(['expand', expanded.has(rule.id) ? '收起步骤' : `展开步骤（${steps.length}）`]);
-      }
-      for (const [act, label] of acts) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'ck-mini';
-        btn.dataset.act = act;
-        btn.dataset.id = rule.id;
-        btn.textContent = label;
-        actions.appendChild(btn);
+        const stepsToggle = document.createElement('button');
+        stepsToggle.type = 'button';
+        stepsToggle.className = 'ck-mini ck-section-toggle';
+        stepsToggle.dataset.act = 'toggle-steps';
+        stepsToggle.dataset.id = rule.id;
+        stepsToggle.textContent = `步骤 ${steps.length} ${expanded.has(rule.id) ? '▾' : '▸'}`;
+        actions.appendChild(stepsToggle);
       }
 
+      const repeatToggle = document.createElement('button');
+      repeatToggle.type = 'button';
+      repeatToggle.className = 'ck-mini ck-section-toggle';
+      repeatToggle.dataset.act = 'toggle-repeat';
+      repeatToggle.dataset.id = rule.id;
+      const rc = rule.repeatCount ?? 1;
+      const rArrow = repeatExpanded.has(rule.id) ? '▾' : '▸';
+      repeatToggle.textContent = `次数 ${rc} ${rArrow}`;
+      actions.appendChild(repeatToggle);
+
+      const renameBtn = document.createElement('button');
+      renameBtn.type = 'button';
+      renameBtn.className = 'ck-mini';
+      renameBtn.dataset.act = 'rename';
+      renameBtn.dataset.id = rule.id;
+      renameBtn.textContent = '改名';
+      actions.appendChild(renameBtn);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'ck-mini';
+      deleteBtn.dataset.act = 'delete';
+      deleteBtn.dataset.id = rule.id;
+      deleteBtn.textContent = '删除';
+      actions.appendChild(deleteBtn);
+
       row.appendChild(actions);
+
+      if (multi && expanded.has(rule.id)) row.appendChild(stepsBox(rule));
+      if (repeatExpanded.has(rule.id)) row.appendChild(repeatInputs(rule));
+
       refs.rules.appendChild(row);
     }
   }
@@ -544,6 +661,22 @@
 
   function clearImportSlot() {
     if (refs) refs.importSlot.textContent = '';
+  }
+
+  function tick() {
+    if (!refs) return;
+    const state = CK.clicker.activeState();
+    if (state) {
+      const done = state.totalRounds - state.remaining;
+      refs.fabBadge.textContent = `${done + (state.paused ? 0 : 1)}/${state.totalRounds}`;
+      refs.fabBadge.dataset.visible = 'true';
+      refs.fab.dataset.running = 'true';
+      refs.fab.dataset.paused = state.paused ? 'true' : 'false';
+    } else {
+      refs.fabBadge.dataset.visible = 'false';
+      delete refs.fab.dataset.running;
+      delete refs.fab.dataset.paused;
+    }
   }
 
   CK.panel = {

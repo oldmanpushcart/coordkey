@@ -1,7 +1,7 @@
 (() => {
   const CK = self.COORDKEY;
 
-  // ruleId -> run。同一条规则播放中再次触发即为取消，所以必须有这张运行表。
+  // ruleId -> run。运行表用于快捷键的 播放→中断→恢复 状态切换。
   const runs = new Map();
 
   function allCanvases() {
@@ -109,7 +109,8 @@
 
   // 抬起之后才 resolve，保证节奏确定：按下 → 按住 → 抬起 → 等间隔 → 下一点。
   // 否则间隔小于按住时长时，上一次还没抬手就会按下下一次。
-  function syntheticClick(target, holdMs) {
+  // 传入 run 时，按住等待可被取消打断，实现立即中断。
+  function syntheticClick(target, holdMs, run) {
     const el =
       target.canvas || document.elementFromPoint(target.x, target.y) || document.documentElement;
     const common = {
@@ -144,8 +145,19 @@
         el.dispatchEvent(new MouseEvent('click', { ...common, buttons: 0 }));
         resolve();
       };
-      if (holdMs > 0) setTimeout(release, holdMs);
-      else release();
+      if (holdMs > 0 && run) {
+        if (run.cancelled) return release();
+        const timer = setTimeout(finish, holdMs);
+        function finish() {
+          clearTimeout(timer);
+          release();
+        }
+        run.wake = finish;
+      } else if (holdMs > 0) {
+        setTimeout(release, holdMs);
+      } else {
+        release();
+      }
     });
   }
 
@@ -167,7 +179,6 @@
     run.cancelled = true;
     if (run.wake) run.wake();
   }
-
   // 本步点击后到下一步点击前的等待：步骤自带 gapMs 优先，否则回落到规则的统一间隔
   function gapAfter(rule, step) {
     const own = Number(step.gapMs);
@@ -175,7 +186,21 @@
     return Number.isFinite(value) && value > 0 ? value : 0;
   }
 
-  async function perform(rule, settings, onStep) {
+  // 轮间等待：可被取消打断，避免暂停后要空等一个完整间隔
+  function gapSleep(ms, run) {
+    return new Promise((resolve) => {
+      if (run.cancelled) return resolve();
+      const timer = setTimeout(finish, ms);
+      function finish() {
+        clearTimeout(timer);
+        run.wake = null;
+        resolve();
+      }
+      run.wake = finish;
+    });
+  }
+
+  async function perform(rule, settings, onStep, totalRounds, remaining) {
     const steps = Array.isArray(rule.steps) ? rule.steps : [];
     if (!steps.length) {
       return { ok: false, reason: '规则没有任何点击步骤', warnings: [], steps: [], cancelled: false };
@@ -183,50 +208,105 @@
 
     const holdMs = settings && Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 0;
     const key = rule.id || CK.uid();
-    const run = { cancelled: false, wake: null };
+    const run = { cancelled: false, wake: null, paused: false, totalRounds, remaining };
     runs.set(key, run);
 
     const warnings = [];
-    const done = [];
-    for (let i = 0; i < steps.length; i += 1) {
+    const allDone = [];
+    const intervalMs = Number(rule.repeatIntervalMs);
+    const roundGap = Number.isFinite(intervalMs) && intervalMs >= 0
+      ? intervalMs
+      : 1000;
+
+    for (let round = 0; round < remaining; round++) {
       if (run.cancelled) break;
-      const target = resolveTarget(steps[i], rule.env);
-      if (!target) {
-        // 单点解析失败只跳过该点，不中断整组
-        warnings.push(`第 ${i + 1} 个点无法解析坐标，已跳过`);
-        continue;
+      run.remaining = remaining - round;
+
+      for (let i = 0; i < steps.length; i++) {
+        if (run.cancelled) break;
+        const target = resolveTarget(steps[i], rule.env);
+        if (!target) {
+          warnings.push(`第 ${i + 1} 个点无法解析坐标，已跳过`);
+          continue;
+        }
+        for (const warning of target.warnings || []) {
+          if (!warnings.includes(warning)) warnings.push(warning);
+        }
+        await syntheticClick(target, holdMs, run);
+        allDone.push({ index: i, x: target.x, y: target.y });
+        if (onStep) onStep({ index: i, total: steps.length, x: target.x, y: target.y, round: round + 1, totalRounds });
+        const wait = gapAfter(rule, steps[i]);
+        if (wait && i < steps.length - 1) await sleep(wait, run);
       }
-      for (const warning of target.warnings || []) {
-        if (!warnings.includes(warning)) warnings.push(warning);
-      }
-      await syntheticClick(target, holdMs);
-      done.push({ index: i, x: target.x, y: target.y });
-      if (onStep) onStep({ index: i, total: steps.length, x: target.x, y: target.y });
-      const wait = gapAfter(rule, steps[i]);
-      if (wait && i < steps.length - 1) await sleep(wait, run);
+
+      if (run.cancelled || run.paused) break;
+      if (round < remaining - 1) await gapSleep(roundGap, run);
     }
 
-    // 取消之后用户可能立刻又按了一次，那时运行表里已经是新的一轮，不能误删
-    if (runs.get(key) === run) runs.delete(key);
+    // 暂停时保留运行表条目，等恢复或取消时再清理；正常结束和纯取消都直接删
+    if (!run.paused && runs.get(key) === run) runs.delete(key);
 
     return {
-      ok: done.length > 0,
+      ok: allDone.length > 0,
       cancelled: run.cancelled,
-      reason: done.length ? '' : '没有成功点击任何位置',
+      paused: run.paused,
+      reason: allDone.length ? '' : '没有成功点击任何位置',
       warnings,
-      steps: done,
+      steps: allDone,
     };
   }
 
-  // 对外唯一入口：播放中再次触发 = 取消剩余步骤
+  // 立即中断：设置取消标志并唤醒所有等待，当前步骤的按下→抬起完成后即退出循环
+  function pauseRun(run) {
+    run.paused = true;
+    run.cancelled = true;
+    if (run.wake) run.wake();
+  }
+
+  // 恢复：从第一步开始，剩余次数继续
+  async function resumeRun(rule, settings, onStep, run) {
+    const remaining = run.remaining || 1;
+    const total = run.totalRounds || 1;
+    return perform(rule, settings, onStep, total, remaining);
+  }
+
+  // 对外唯一入口：
+  // - 未运行 → 开始播放（含重复轮次）
+  // - 运行中未暂停 → 立即中断（当前步骤完成后停止）
+  // - 已暂停 → 恢复（从第一步开始，剩余次数继续）
   async function trigger(rule, settings, onStep) {
     if (!rule) return { ok: false, reason: '规则不存在', warnings: [], steps: [] };
     const running = rule.id ? runs.get(rule.id) : null;
     if (running) {
-      cancelRun(running);
-      return { ok: true, cancelled: true, interrupted: true, warnings: [], steps: [] };
+      if (running.paused) {
+        resumeRun(rule, settings, onStep, running);
+        return { ok: true, resumed: true, warnings: [], steps: [] };
+      }
+      pauseRun(running);
+      return { ok: true, paused: true, warnings: [], steps: [] };
     }
-    return perform(rule, settings, onStep);
+    const raw = Number(rule.repeatCount);
+    const totalRounds = Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 1;
+    if (totalRounds <= 0) return { ok: false, reason: '执行次数为 0', warnings: [], steps: [] };
+    return perform(rule, settings, onStep, totalRounds, totalRounds);
+  }
+
+  function getState(ruleId) {
+    if (!ruleId) return null;
+    const run = runs.get(ruleId);
+    if (!run) return null;
+    return {
+      paused: !!run.paused,
+      totalRounds: run.totalRounds || 1,
+      remaining: run.remaining || 0,
+    };
+  }
+
+  function activeState() {
+    for (const [id, run] of runs) {
+      return { ruleId: id, paused: !!run.paused, totalRounds: run.totalRounds || 1, remaining: run.remaining || 0 };
+    }
+    return null;
   }
 
   function cancelAll() {
@@ -234,5 +314,5 @@
     runs.clear();
   }
 
-  CK.clicker = { trigger, cancelAll, resolveTarget, findCanvas, canvasAt, describeCanvas };
+  CK.clicker = { trigger, cancelAll, getState, activeState, resolveTarget, findCanvas, canvasAt, describeCanvas };
 })();

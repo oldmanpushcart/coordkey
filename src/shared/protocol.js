@@ -71,12 +71,18 @@
     const steps = Array.isArray(rule.steps) ? rule.steps.filter(isObject) : [];
     if (!steps.length) return null;
     const intervalMs = Number(rule.intervalMs);
+    const repeatCount = Number(rule.repeatCount);
+    const repeatIntervalMs = Number(rule.repeatIntervalMs);
     return {
       ...rule,
       id: typeof rule.id === 'string' && rule.id ? rule.id : uid(),
       steps,
       intervalMs:
         Number.isFinite(intervalMs) && intervalMs >= 0 ? intervalMs : DEFAULT_STEP_INTERVAL_MS,
+      repeatCount:
+        Number.isFinite(repeatCount) && repeatCount >= 1 ? Math.floor(repeatCount) : 1,
+      repeatIntervalMs:
+        Number.isFinite(repeatIntervalMs) && repeatIntervalMs >= 0 ? Math.round(repeatIntervalMs) : null,
     };
   }
 

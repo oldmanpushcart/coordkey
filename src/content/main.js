@@ -31,7 +31,8 @@
       CK.hint.toast(res.reason || '触发失败', 'error');
       return;
     }
-    if (res.interrupted) CK.hint.toast('已取消剩余点击', 'warn', 1800);
+    if (res.paused) CK.hint.toast('已中断', 'warn', 1800);
+    else if (res.resumed) CK.hint.toast('已恢复执行', 'ok', 1200);
     for (const warning of res.warnings) CK.hint.toast(warning, 'warn');
   }
 

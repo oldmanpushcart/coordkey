@@ -37,6 +37,32 @@
     .ck-fab:hover { transform: scale(1.06); }
     .ck-fab svg { width: 22px; height: 22px; display: block; }
     .ck-fab[data-state="off"] { filter: grayscale(1); opacity: 0.55; }
+    .ck-fab[data-running="true"] { animation: ck-fab-pulse 1.5s ease-in-out infinite; }
+    .ck-fab[data-paused="true"] { filter: brightness(0.7); animation: none; }
+    @keyframes ck-fab-pulse {
+      0%, 100% { box-shadow: 0 4px 14px rgba(40, 60, 160, 0.45); }
+      50% { box-shadow: 0 4px 20px rgba(123, 79, 255, 0.7); }
+    }
+    .ck-fab-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      border-radius: 9px;
+      background: #7b4fff;
+      color: #fff;
+      font-size: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      pointer-events: none;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }
+    .ck-fab-badge[data-visible="true"] { display: flex; }
 
     .ck-panel {
       pointer-events: auto;
@@ -137,12 +163,12 @@
       color: #ffb3c0;
     }
 
-    .ck-rules { display: flex; flex-direction: column; gap: 8px; }
+    .ck-rules { display: flex; flex-direction: column; gap: 10px; }
     /* 上面的 display:flex 会盖掉 UA 的 [hidden]，收起列表得显式再写一条 */
     .ck-rules[hidden] { display: none; }
     .ck-empty { color: #6b7280; font-size: 12px; padding: 6px 2px; }
     .ck-rule {
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 8px;
       padding: 8px 10px;
     }
@@ -185,6 +211,27 @@
       font-size: 11px;
       padding: 3px 6px;
     }
+    .ck-repeat-inputs {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 7px;
+      font-size: 11px;
+      color: #8b93a7;
+      flex-wrap: wrap;
+    }
+    .ck-repeat-inputs input[type="number"] {
+      pointer-events: auto;
+      width: 66px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 6px;
+      color: #e8eaf2;
+      font-family: inherit;
+      font-size: 11px;
+      padding: 3px 6px;
+    }
+    .ck-repeat-sep { width: 1px; height: 14px; background: rgba(255,255,255,0.1); flex: none; }
     .ck-step input[type="number"][data-custom="true"] {
       border-color: rgba(143, 107, 255, 0.8);
       color: #ddd0ff;
@@ -229,7 +276,7 @@
     }
     .ck-step-tail { color: #6b7280; }
     .ck-step .ck-mini { padding: 2px 6px; }
-    .ck-rule-actions { display: flex; gap: 6px; margin-top: 7px; }
+    .ck-rule-actions { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; align-items: center; }
     .ck-mini {
       pointer-events: auto;
       background: rgba(255, 255, 255, 0.07);

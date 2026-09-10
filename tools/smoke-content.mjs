@@ -491,7 +491,7 @@ if (CK && CK.clicker) {
   );
 }
 
-// 组播放与取消语义
+// 组播放、暂停/恢复与重复语义
 if (CK && CK.clicker) {
   console.log('--- clicker ---');
   const settings = { holdMs: 0, hintOpacity: 0.3, hintDurationMs: 900 };
@@ -510,28 +510,53 @@ if (CK && CK.clicker) {
   const second = await CK.clicker.trigger(group, settings);
   console.log(
     '播放中再按:',
-    'cancelled', second.cancelled,
-    '| interrupted', second.interrupted,
+    'paused', second.paused,
     '| steps', second.steps.length,
-    '(expect true | true | 0)',
+    '(expect true | 0)',
   );
   const first = await running;
   console.log(
-    '被取消的组:',
+    '被暂停的组:',
     'clicked', first.steps.length,
     '| cancelled', first.cancelled,
-    '| interrupted', !!first.interrupted,
+    '| paused', first.paused,
     '| onStep', seen.join(','),
-    '(expect 1 | true | false | 1/3@320)',
+    '(expect 1 | true | true | 1/3@320)',
   );
 
-  const replay = await CK.clicker.trigger(group, settings);
+  const resumed = await CK.clicker.trigger(group, settings);
   console.log(
-    '取消后重播:',
-    'clicked', replay.steps.length,
-    '| cancelled', replay.cancelled,
-    '| warnings', replay.warnings.length,
-    '(expect 3 | false | 0)',
+    '暂停后恢复:',
+    'resumed', resumed.resumed,
+    '(expect true)',
+  );
+  const resumeResult = await CK.clicker.trigger(group, settings);
+  // 恢复后的执行正在跑，再按一次暂停它
+  console.log(
+    '恢复后再按:',
+    'paused', resumeResult.paused,
+    '(expect true)',
+  );
+  // 清掉暂停态，避免影响后续测试
+  CK.clicker.cancelAll();
+
+  // 重复执行：repeatCount=3 → 共 3 轮（次数即总轮数）
+  const repeatGroup = {
+    id: 'g_rep',
+    shortcut: { code: 'KeyR', key: 'r' },
+    steps: [step(0.5, 0.5)],
+    intervalMs: 0,
+    repeatCount: 3,
+    repeatIntervalMs: 10,
+    env: { vw: 1280, vh: 720, dpr: 1 },
+  };
+  const repeatStamps = [];
+  const repeatRes = await CK.clicker.trigger(repeatGroup, settings, () => repeatStamps.push(Date.now()));
+  console.log(
+    '重复执行:',
+    'clicked', repeatRes.steps.length,
+    '| 总轮次 3', repeatRes.steps.length === 3,
+    '(expect 3 | true)',
   );
 
   const perStep = {
@@ -553,15 +578,15 @@ if (CK && CK.clicker) {
     '(expect 3 | true | true)',
   );
 
-  const interrupted = CK.clicker.trigger(group, settings);
+  const cancelTrigger = CK.clicker.trigger(group, settings);
   CK.clicker.cancelAll();
-  const stopped = await interrupted;
+  const stopped = await cancelTrigger;
   const afterCancelAll = await CK.clicker.trigger(group, settings);
   console.log(
     'cancelAll:',
     'clicked', stopped.steps.length,
     '| cancelled', stopped.cancelled,
-    '| 运行表已清空', !afterCancelAll.interrupted && afterCancelAll.steps.length === 3,
+    '| 运行表已清空', afterCancelAll.ok && afterCancelAll.steps.length === 3,
     '(expect 1 | true | true)',
   );
 }
