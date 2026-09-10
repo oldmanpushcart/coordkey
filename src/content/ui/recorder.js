@@ -1,5 +1,5 @@
 (() => {
-  const KC = self.KEYCLICK;
+  const CK = self.COORDKEY;
 
   // contextmenu 必须一起吞掉：右键用来撤销上一个点，否则每撤销一次就弹一次系统菜单
   const CAPTURE_EVENTS = ['pointerdown', 'mousedown', 'mouseup', 'click', 'contextmenu'];
@@ -12,14 +12,14 @@
 
   function isOurUi(target) {
     return (
-      (KC.widgetHost && (target === KC.widgetHost || KC.widgetHost.contains(target))) ||
-      (KC.hintHost && (target === KC.hintHost || KC.hintHost.contains(target)))
+      (CK.widgetHost && (target === CK.widgetHost || CK.widgetHost.contains(target))) ||
+      (CK.hintHost && (target === CK.hintHost || CK.hintHost.contains(target)))
     );
   }
 
   // 设置项「录制时点击照常生效」：逐事件读取，录制途中在面板里改也立刻生效
   function passthrough() {
-    return KC.store.current().settings.recordPassthrough;
+    return CK.store.current().settings.recordPassthrough;
   }
 
   // 穿透开启时左键真实传给页面——多步骤流程往往要先操作页面切到别的界面，再点下一个位置；
@@ -51,18 +51,18 @@
 
   function statusForPoints() {
     const last = points[points.length - 1];
-    KC.panel.setRecordStatus(
+    CK.panel.setRecordStatus(
       `已记录 ${points.length} 个点${last ? `（最后一点 ${coordText(last)}）` : ''}，` +
         '继续点击可添加，右键撤销上一点；按下按键完成绑定，Escape 取消。',
     );
   }
 
   function recordPoint(event) {
-    const canvas = KC.clicker.canvasAt(event.clientX, event.clientY);
+    const canvas = CK.clicker.canvasAt(event.clientX, event.clientY);
     const point = {
       x: event.clientX,
       y: event.clientY,
-      canvas: canvas ? KC.clicker.describeCanvas(canvas) : null,
+      canvas: canvas ? CK.clicker.describeCanvas(canvas) : null,
       nx: null,
       ny: null,
     };
@@ -76,11 +76,11 @@
     points.push(point);
     const first = points.length === 1;
     phase = 'combo';
-    KC.hint.setReticle(0, 0, false);
-    KC.hint.setDraftPoints(points);
+    CK.hint.setReticle(0, 0, false);
+    CK.hint.setDraftPoints(points);
     statusForPoints();
     if (first) {
-      KC.hint.toast(
+      CK.hint.toast(
         `第 1 个点已记录${canvas ? '（已锁定 canvas）' : '（按视口坐标记录）'}。` +
           '继续点击可连点成组，右键撤销上一点；按下按键完成绑定（Escape 取消）。',
         'ok',
@@ -91,23 +91,23 @@
 
   function undoPoint() {
     if (!points.length) {
-      KC.hint.toast('还没有可撤销的点', 'warn', 1600);
+      CK.hint.toast('还没有可撤销的点', 'warn', 1600);
       return;
     }
     points.pop();
-    KC.hint.setDraftPoints(points);
+    CK.hint.setDraftPoints(points);
     if (!points.length) {
       phase = 'point';
-      KC.panel.setRecordStatus('已撤销全部点。点击要绑定的位置，然后按按键或组合键。');
+      CK.panel.setRecordStatus('已撤销全部点。点击要绑定的位置，然后按按键或组合键。');
       return;
     }
     statusForPoints();
-    KC.hint.toast(`已撤销第 ${points.length + 1} 个点`, 'warn', 1600);
+    CK.hint.toast(`已撤销第 ${points.length + 1} 个点`, 'warn', 1600);
   }
 
   function onMove(event) {
     if (phase !== 'point' && phase !== 'combo') return;
-    KC.hint.setReticle(
+    CK.hint.setReticle(
       event.clientX,
       event.clientY,
       true,
@@ -125,44 +125,44 @@
     if (phase === 'point') {
       event.preventDefault();
       event.stopPropagation();
-      if (!KC.hotkeys.comboFromEvent(event)) return; // 纯修饰键，可能只是先按住了 Shift
+      if (!CK.hotkeys.comboFromEvent(event)) return; // 纯修饰键，可能只是先按住了 Shift
       const msg = '请先点击要绑定的位置';
-      KC.panel.setRecordStatus(msg, 'error');
-      KC.hint.toast(msg, 'error', 2600);
+      CK.panel.setRecordStatus(msg, 'error');
+      CK.hint.toast(msg, 'error', 2600);
       return;
     }
     if (phase === 'combo') {
       event.preventDefault();
       event.stopPropagation();
-      const combo = KC.hotkeys.comboFromEvent(event);
+      const combo = CK.hotkeys.comboFromEvent(event);
       if (!combo) return; // 纯修饰键，继续等
-      const check = KC.hotkeys.validate(combo);
+      const check = CK.hotkeys.validate(combo);
       if (!check.ok) {
-        KC.panel.setRecordStatus(check.reason, 'error');
-        KC.hint.toast(check.reason, 'error', 4200);
+        CK.panel.setRecordStatus(check.reason, 'error');
+        CK.hint.toast(check.reason, 'error', 4200);
         return;
       }
-      const conflict = KC.store
-        .rulesFor(KC.origin)
-        .find((r) => KC.hotkeys.comboId(r.shortcut) === check.id);
+      const conflict = CK.store
+        .rulesFor(CK.origin)
+        .find((r) => CK.hotkeys.comboId(r.shortcut) === check.id);
       if (conflict) {
         const name = conflict.name || '未命名';
-        if (!window.confirm(`${KC.hotkeys.comboLabel(combo)} 已绑定到「${name}」，覆盖它？`)) return;
+        if (!window.confirm(`${CK.hotkeys.comboLabel(combo)} 已绑定到「${name}」，覆盖它？`)) return;
         pending = { combo, overwriteId: conflict.id };
       } else {
         pending = { combo, overwriteId: null };
       }
       phase = 'selftest';
-      KC.hint.setDraftPoints(points);
-      const label = KC.hotkeys.comboLabel(combo);
-      KC.panel.setRecordStatus(
+      CK.hint.setDraftPoints(points);
+      const label = CK.hotkeys.comboLabel(combo);
+      CK.panel.setRecordStatus(
         `${points.length} 个点已就绪，自检中：请再按一次 ${label} 确认浏览器能送达（3 秒超时）。`,
       );
-      KC.hint.toast(`自检：请再按一次 ${label}`, 'ok', 2800);
+      CK.hint.toast(`自检：请再按一次 ${label}`, 'ok', 2800);
       selfTestTimer = setTimeout(() => {
         const msg = `3 秒内没有收到 ${label}。它可能被浏览器保留或被其他扩展占用，未保存。`;
-        KC.panel.setRecordStatus(msg, 'error');
-        KC.hint.toast(msg, 'error', 5000);
+        CK.panel.setRecordStatus(msg, 'error');
+        CK.hint.toast(msg, 'error', 5000);
         finish();
       }, SELFTEST_TIMEOUT_MS);
       return;
@@ -172,7 +172,7 @@
       event.stopPropagation();
       // 自检要的是真实的第二次按下，长按的自动重复不算
       if (event.repeat) return;
-      if (!KC.hotkeys.matchesEvent({ shortcut: pending.combo }, event)) return;
+      if (!CK.hotkeys.matchesEvent({ shortcut: pending.combo }, event)) return;
       clearTimeout(selfTestTimer);
       save();
     }
@@ -180,11 +180,11 @@
 
   async function save() {
     const { combo, overwriteId } = pending;
-    const label = KC.hotkeys.comboLabel(combo);
+    const label = CK.hotkeys.comboLabel(combo);
     const rule = {
-      id: overwriteId || KC.uid(),
+      id: overwriteId || CK.uid(),
       name: '',
-      shortcut: { ...combo, label },
+      shortcut: { ...combo },
       steps: points.map((point) => ({
         nx: point.nx,
         ny: point.ny,
@@ -192,9 +192,7 @@
         y: point.y,
         canvas: point.canvas,
       })),
-      intervalMs: KC.DEFAULT_STEP_INTERVAL_MS,
-      button: 'left',
-      clickCount: 1,
+      intervalMs: CK.DEFAULT_STEP_INTERVAL_MS,
       env: {
         vw: window.innerWidth,
         vh: window.innerHeight,
@@ -202,14 +200,14 @@
       },
       createdAt: new Date().toISOString(),
     };
-    await KC.store.upsertRule(KC.origin, rule);
+    await CK.store.upsertRule(CK.origin, rule);
     const summary =
       rule.steps.length === 1
         ? coordText(rule.steps[0])
         : `${rule.steps.length} 个点，间隔 ${rule.intervalMs}ms`;
-    const scheme = KC.store.activeSchemeName(KC.origin);
-    KC.panel.setRecordStatus(`已保存到方案「${scheme}」：${label} → ${summary}`);
-    KC.hint.toast(`已绑定 ${label} → ${summary}`, 'ok');
+    const scheme = CK.store.activeSchemeName(CK.origin);
+    CK.panel.setRecordStatus(`已保存到方案「${scheme}」：${label} → ${summary}`);
+    CK.hint.toast(`已绑定 ${label} → ${summary}`, 'ok');
     finish();
   }
 
@@ -221,31 +219,31 @@
     }
     window.removeEventListener('mousemove', onMove, true);
     window.removeEventListener('keydown', onKey, true);
-    KC.hint.setReticle(0, 0, false);
-    KC.hint.setDraftPoints([]);
+    CK.hint.setReticle(0, 0, false);
+    CK.hint.setDraftPoints([]);
     phase = 'idle';
     points = [];
     pending = null;
-    KC.state.recording = false;
+    CK.state.recording = false;
   }
 
   function start() {
-    if (KC.state.recording) return;
-    KC.state.recording = true;
+    if (CK.state.recording) return;
+    CK.state.recording = true;
     phase = 'point';
     points = [];
     pending = null;
 
     const through = passthrough();
     // 关闭面板，把整个屏幕让给页面，避免面板挡住要绑定的位置
-    KC.panel.close();
-    KC.hint.setDraftPoints([]);
-    KC.panel.setRecordStatus(
+    CK.panel.close();
+    CK.hint.setDraftPoints([]);
+    CK.panel.setRecordStatus(
       through
         ? '录制中：依次点击要绑定的位置（点击照常生效，可先操作页面切到别的界面再点下一个），最后按按键或组合键。Escape 取消。'
         : '录制中：依次点击要绑定的位置（点击不会传给页面，只用来取坐标），最后按按键或组合键。Escape 取消。',
     );
-    KC.hint.toast(
+    CK.hint.toast(
       through
         ? '录制中：依次点击要绑定的位置，点击会照常传给页面（可边操作边录）；连点多个即为顺序点击组，右键撤销上一点，最后按按键或组合键。Escape 取消。'
         : '录制中：依次点击要绑定的位置，点击不会传给页面，只用来取坐标；连点多个即为顺序点击组，右键撤销上一点，最后按按键或组合键。Escape 取消。',
@@ -262,9 +260,9 @@
 
   function cancel() {
     finish();
-    KC.panel.setRecordStatus('');
-    KC.hint.toast('已取消录制', 'warn', 1800);
+    CK.panel.setRecordStatus('');
+    CK.hint.toast('已取消录制', 'warn', 1800);
   }
 
-  KC.recorder = { start, cancel, isActive: () => KC.state.recording };
+  CK.recorder = { start, cancel, isActive: () => CK.state.recording };
 })();

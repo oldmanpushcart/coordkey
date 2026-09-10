@@ -1,5 +1,5 @@
 (() => {
-  const KC = self.KEYCLICK;
+  const CK = self.COORDKEY;
 
   const MODIFIER_CODES = new Set([
     'ControlLeft', 'ControlRight',
@@ -109,5 +109,5 @@
     );
   }
 
-  KC.hotkeys = { comboFromEvent, comboId, comboLabel, comboSymbols, stepLabel, displayKey, validate, matchesEvent, RESERVED };
+  CK.hotkeys = { comboFromEvent, comboId, comboLabel, comboSymbols, stepLabel, displayKey, validate, matchesEvent, RESERVED };
 })();

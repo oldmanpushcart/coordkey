@@ -148,6 +148,9 @@ class FakeEvent {
 
 // window 上的监听器要真正登记，否则没法把事件喂给 recorder 的捕获处理器
 const windowListeners = new Map();
+// 落盘记录与 onChanged 监听器同理：降级只读那条断言要靠它判断「save() 到底写没写」
+const storageWrites = [];
+const storageListeners = [];
 
 globalThis.self = globalThis;
 globalThis.window = globalThis;
@@ -163,6 +166,11 @@ globalThis.removeEventListener = (type, fn) => {
 globalThis.__fireWindow = (event) => {
   for (const fn of windowListeners.get(event.type) || []) fn(event);
   return event;
+};
+// 绕过磁盘直接给 store 喂一份新配置，用来构造「数据来自更新版本」的现场
+globalThis.__fireStorageChange = (newValue) => {
+  const key = globalThis.COORDKEY.STORAGE_KEY;
+  for (const fn of storageListeners) fn({ [key]: { newValue } }, 'local');
 };
 globalThis.PointerEvent = FakeEvent;
 globalThis.MouseEvent = FakeEvent;
@@ -189,13 +197,20 @@ globalThis.chrome = {
   storage: {
     local: {
       get: async () => ({}),
-      set: async () => {},
+      set: async (items) => {
+        storageWrites.push(items);
+      },
     },
-    onChanged: { addListener() {} },
+    onChanged: {
+      addListener(fn) {
+        storageListeners.push(fn);
+      },
+    },
   },
   runtime: {
     onMessage: { addListener() {} },
     sendMessage: async () => null,
+    getManifest: () => ({ version: '1.0.0' }),
     getURL: (p) => p,
   },
 };
@@ -217,13 +232,13 @@ for (const file of FILES) {
   }
 }
 
-const KC = globalThis.KEYCLICK;
+const CK = globalThis.COORDKEY;
 console.log('--- namespace ---');
-console.log('modules:', KC ? Object.keys(KC).sort().join(', ') : 'MISSING');
+console.log('modules:', CK ? Object.keys(CK).sort().join(', ') : 'MISSING');
 
 // 组合键逻辑的纯函数自检
-if (KC && KC.hotkeys) {
-  const { comboId, comboLabel, comboSymbols, stepLabel, validate } = KC.hotkeys;
+if (CK && CK.hotkeys) {
+  const { comboId, comboLabel, comboSymbols, stepLabel, validate } = CK.hotkeys;
   const combo = { ctrl: true, shift: true, alt: false, meta: false, code: 'Digit1', key: '!' };
   console.log('comboId  :', comboId(combo));
   console.log('label    :', comboLabel(combo));
@@ -256,129 +271,194 @@ if (KC && KC.hotkeys) {
 const step = (nx, ny) => ({ nx, ny, x: Math.round(nx * 1280), y: Math.round(ny * 720), canvas: null });
 
 // 存储层与方案模型的自检
-if (KC && KC.store) {
-  const origin = KC.origin;
+if (CK && CK.store) {
+  const origin = CK.origin;
   console.log('--- store ---');
-  const normalized = KC.store.normalize({
-    version: 2,
+  // loadProfile 是唯一的读取入口：先走迁移链再归一化。v1 是当前版本，原样通过。
+  const loaded = CK.loadProfile({
+    version: 1,
     settings: { enabled: true, preferDebugger: true, holdMs: 80 },
     sites: {
       'https://old.test': {
         enabled: true,
-        schemes: {
-          默认: {
+        siteNote: 'keep-me',
+        activeSchemeId: 'sc_1',
+        schemes: [
+          {
+            id: 'sc_1',
+            name: '默认',
             rules: [
-              { id: 'a', shortcut: { code: 'KeyA' }, steps: [step(0.5, 0.5)] },
+              // repeat 是将来才会加的字段，现在喂进去是为了验证「加法不升版本」真的成立
+              { id: 'a', shortcut: { code: 'KeyA' }, steps: [step(0.5, 0.5)], repeat: { count: 3 } },
               { id: 'b', shortcut: { code: 'KeyB' }, nx: 0.5, ny: 0.5, x: 1, y: 2 },
               { id: 'c', shortcut: { code: 'KeyC' }, steps: [] },
             ],
           },
-        },
+        ],
       },
     },
   });
+  const normalized = loaded.profile;
   const legacySite = normalized.sites['https://old.test'];
-  const kept = legacySite.schemes['默认'].rules;
+  const kept = legacySite.schemes[0].rules;
   console.log(
     '形状约束 :',
-    'version', normalized.version, `(expect ${KC.VERSION})`,
-    '| preferDebugger 残留', 'preferDebugger' in normalized.settings, '(expect false)',
+    'version', normalized.version, `(expect ${CK.VERSION})`,
+    '| foreign', loaded.foreign, '(expect 0)',
+    // 归一化必须无损：未声明的设置项要活下来，否则以后每加一个字段，一次读写就被洗掉
+    '| preferDebugger 残留', 'preferDebugger' in normalized.settings, '(expect true)',
     '| holdMs', normalized.settings.holdMs, '(expect 80)',
     '| recordPassthrough 补默认', normalized.settings.recordPassthrough, '(expect true)',
     '| 无 steps 的规则被丢弃', kept.length, '(expect 1)',
-    '| 补默认间隔', kept[0] && kept[0].intervalMs, `(expect ${KC.DEFAULT_STEP_INTERVAL_MS})`,
+    '| 补默认间隔', kept[0] && kept[0].intervalMs, `(expect ${CK.DEFAULT_STEP_INTERVAL_MS})`,
+    '| 方案 id 保持', legacySite.schemes[0].id, '(expect sc_1)',
+    '| 站点级未知键保住', legacySite.siteNote, '(expect keep-me)',
+    '| 规则级未知键保住', JSON.stringify(kept[0] && kept[0].repeat), '(expect {"count":3})',
   );
 
-  await KC.store.load();
-  await KC.store.upsertRule(origin, {
+  // 降级：读到更高版本的数据时保留原版本号并标记 foreign，store 据此转为只读
+  const future = CK.loadProfile({
+    version: 99,
+    settings: { enabled: false, futureFlag: 7 },
+    sites: {
+      'https://future.test': {
+        enabled: true,
+        activeSchemeId: 'sc_f',
+        schemes: [{ id: 'sc_f', name: '未来', rules: [{ id: 'f1', steps: [step(0.5, 0.5)] }] }],
+      },
+    },
+  });
+  console.log(
+    '降级保护 :',
+    'foreign', future.foreign, '(expect 99)',
+    '| version 不写低', future.profile.version, '(expect 99)',
+    '| 未知设置项保住', future.profile.settings.futureFlag, '(expect 7)',
+    '| 方案仍可读', future.profile.sites['https://future.test'].schemes[0].name, '(expect 未来)',
+  );
+  const broken = CK.loadProfile({ version: 'x', settings: {} });
+  console.log(
+    '非法版本 :',
+    'foreign', broken.foreign,
+    '| 回到空配置', Object.keys(broken.profile.sites).length, broken.profile.version,
+    `(expect 0 | 0 ${CK.VERSION})`,
+  );
+
+  await CK.store.load();
+  await CK.store.upsertRule(origin, {
     id: 'r1',
     name: '测试',
     shortcut: { code: 'KeyH', key: 'h' },
     steps: [step(0.5, 0.5)],
-    intervalMs: KC.DEFAULT_STEP_INTERVAL_MS,
+    intervalMs: CK.DEFAULT_STEP_INTERVAL_MS,
   });
-  console.log('写入规则 :', KC.store.rulesFor(origin).length, '(expect 1)');
+  console.log('写入规则 :', CK.store.rulesFor(origin).length, '(expect 1)');
 
-  const patched = await KC.store.patchRule(origin, 'r1', { intervalMs: 600 });
+  const patched = await CK.store.patchRule(origin, 'r1', { intervalMs: 600 });
   console.log(
     '改间隔   :',
     patched && patched.intervalMs,
     '| 读回',
-    KC.store.rulesFor(origin)[0].intervalMs,
+    CK.store.rulesFor(origin)[0].intervalMs,
     '(expect 600 | 600)',
   );
-  const badPatch = await KC.store.patchRule(origin, 'r1', { steps: [] });
+  const badPatch = await CK.store.patchRule(origin, 'r1', { steps: [] });
   console.log(
     '非法补丁 :',
     JSON.stringify(badPatch),
     '| 原规则保持',
-    KC.store.rulesFor(origin).length,
-    KC.store.rulesFor(origin)[0].intervalMs,
+    CK.store.rulesFor(origin).length,
+    CK.store.rulesFor(origin)[0].intervalMs,
     '(expect null | 1 600)',
   );
-  const withGap = await KC.store.patchRule(origin, 'r1', {
-    steps: [{ ...KC.store.rulesFor(origin)[0].steps[0], gapMs: 800 }],
+  const withGap = await CK.store.patchRule(origin, 'r1', {
+    steps: [{ ...CK.store.rulesFor(origin)[0].steps[0], gapMs: 800 }],
   });
   console.log(
     '逐步覆盖 :',
     withGap && withGap.steps[0].gapMs,
     '| 读回',
-    KC.store.rulesFor(origin)[0].steps[0].gapMs,
+    CK.store.rulesFor(origin)[0].steps[0].gapMs,
     '| 统一间隔仍在',
     withGap && withGap.intervalMs,
     '(expect 800 | 800 | 600)',
   );
 
-  const created = await KC.store.createScheme(origin, '大屏');
+  const defaultId = CK.store.schemesFor(origin)[0].id;
+  const created = await CK.store.createScheme(origin, '大屏');
   console.log(
     '新建方案 :',
     created.name,
-    'active:', KC.store.activeSchemeName(origin),
-    'rules:', KC.store.rulesFor(origin).length,
-    '(expect 大屏 | 大屏 | 0：新方案是空的，不再复制当前方案)',
+    '| 发了 id', !!created.id,
+    '| active:', CK.store.activeSchemeName(origin),
+    '| rules:', CK.store.rulesFor(origin).length,
+    '(expect 大屏 | true | 大屏 | 0：新方案是空的，不再复制当前方案)',
   );
-  const dup = await KC.store.createScheme(origin, '大屏');
-  console.log('重名去重 :', dup.name, '(expect 大屏 (2))');
+  const dup = await CK.store.createScheme(origin, '大屏');
+  console.log(
+    '重名去重 :',
+    dup.name,
+    '| id 与前者不同', dup.id !== created.id,
+    '(expect 大屏 (2) | true)',
+  );
 
-  await KC.store.setActiveScheme(origin, '大屏');
-  await KC.store.upsertRule(origin, {
+  await CK.store.setActiveScheme(origin, created.id);
+  await CK.store.upsertRule(origin, {
     id: 'r2',
     name: '大屏专用',
     shortcut: { code: 'Digit9', key: '9' },
     steps: [step(0.2, 0.2)],
-    intervalMs: KC.DEFAULT_STEP_INTERVAL_MS,
+    intervalMs: CK.DEFAULT_STEP_INTERVAL_MS,
   });
-  await KC.store.setActiveScheme(origin, '默认');
+  await CK.store.setActiveScheme(origin, defaultId);
   console.log(
     '按方案隔离:',
-    '默认 rules:', KC.store.rulesFor(origin).map((rule) => rule.id).join(','),
+    '默认 rules:', CK.store.rulesFor(origin).map((rule) => rule.id).join(','),
     '(expect r1：「大屏」里的 r2 不会漏进默认方案)',
   );
 
-  const deleted = await KC.store.deleteScheme(origin, '大屏');
-  console.log('删除方案 :', JSON.stringify(deleted), 'active:', KC.store.activeSchemeName(origin));
-  await KC.store.deleteScheme(origin, '大屏 (2)');
-  console.log('方案列表 :', KC.store.schemeNames(origin).join('|'), '(expect 默认)');
-  const last = await KC.store.deleteScheme(origin, KC.store.activeSchemeName(origin));
+  // 方案的身份是 id 而不是名字：改名之后 activeSchemeId 仍指向同一个方案，规则不跟着名字跑掉
+  const renamed = await CK.store.renameScheme(origin, created.id, '超大屏');
+  await CK.store.setActiveScheme(origin, created.id);
+  console.log(
+    '改名保身份:',
+    renamed.name,
+    '| id 不变', renamed.id === created.id,
+    '| active 仍是它', CK.store.activeSchemeName(origin),
+    '| 规则还在', CK.store.rulesFor(origin).map((rule) => rule.id).join(','),
+    '(expect 超大屏 | true | 超大屏 | r2)',
+  );
+  const clash = await CK.store.renameScheme(origin, created.id, '默认');
+  console.log('重名拒绝 :', JSON.stringify(clash), '(expect ok:false)');
+  await CK.store.setActiveScheme(origin, defaultId);
+
+  const deleted = await CK.store.deleteScheme(origin, created.id);
+  console.log('删除方案 :', JSON.stringify(deleted), 'active:', CK.store.activeSchemeName(origin));
+  await CK.store.deleteScheme(origin, dup.id);
+  console.log(
+    '方案列表 :',
+    CK.store.schemesFor(origin).map((scheme) => scheme.name).join('|'),
+    '(expect 默认)',
+  );
+  const last = await CK.store.deleteScheme(origin, defaultId);
   console.log('禁止删空 :', JSON.stringify(last), '(expect ok:false)');
 }
 
 // 标记浮层：单步只显示符号，多步显示「序号 + 符号」，位置按 canvas 归一化反算
-if (KC && KC.markers && KC.store) {
+if (CK && CK.markers && CK.store) {
   console.log('--- markers ---');
-  await KC.store.upsertRule(KC.origin, {
+  await CK.store.upsertRule(CK.origin, {
     id: 'g1',
     name: '',
     shortcut: { shift: true, code: 'KeyH', key: 'H' },
     steps: [step(0.25, 0.5), step(0.5, 0.5), step(0.75, 0.5)],
-    intervalMs: KC.DEFAULT_STEP_INTERVAL_MS,
+    intervalMs: CK.DEFAULT_STEP_INTERVAL_MS,
   });
-  KC.markers.render();
-  const layer = KC.hint
+  CK.markers.render();
+  const layer = CK.hint
     .ensure()
-    .children.find((el) => el.className === 'kc-markers');
+    .children.find((el) => el.className === 'ck-markers');
   layer.children.length = 0;
-  KC.markers.render();
+  CK.markers.render();
   console.log(
     '标记文本 :',
     layer.children.map((el) => el.textContent).join(' | '),
@@ -392,9 +472,9 @@ if (KC && KC.markers && KC.store) {
 }
 
 // 坐标解析：没落在 canvas 上的点按视口像素直接命中且不算异常，落在 canvas 上的点走归一化反算
-if (KC && KC.clicker) {
+if (CK && CK.clicker) {
   console.log('--- resolve ---');
-  const raw = KC.clicker.resolveTarget({ nx: null, ny: null, x: 512, y: 384, canvas: null }, null);
+  const raw = CK.clicker.resolveTarget({ nx: null, ny: null, x: 512, y: 384, canvas: null }, null);
   console.log(
     '原始坐标 :',
     raw && `${raw.x},${raw.y}`,
@@ -402,7 +482,7 @@ if (KC && KC.clicker) {
     '| 无 canvas', raw && raw.canvas === null,
     '(expect 512,384 | 0 | true)',
   );
-  const norm = KC.clicker.resolveTarget(step(0.25, 0.5), null);
+  const norm = CK.clicker.resolveTarget(step(0.25, 0.5), null);
   console.log(
     '归一化   :',
     norm && `${norm.x},${norm.y}`,
@@ -412,7 +492,7 @@ if (KC && KC.clicker) {
 }
 
 // 组播放与取消语义
-if (KC && KC.clicker) {
+if (CK && CK.clicker) {
   console.log('--- clicker ---');
   const settings = { holdMs: 0, hintOpacity: 0.3, hintDurationMs: 900 };
   const group = {
@@ -424,10 +504,10 @@ if (KC && KC.clicker) {
   };
 
   const seen = [];
-  const running = KC.clicker.trigger(group, settings, (s) =>
+  const running = CK.clicker.trigger(group, settings, (s) =>
     seen.push(`${s.index + 1}/${s.total}@${s.x}`),
   );
-  const second = await KC.clicker.trigger(group, settings);
+  const second = await CK.clicker.trigger(group, settings);
   console.log(
     '播放中再按:',
     'cancelled', second.cancelled,
@@ -445,7 +525,7 @@ if (KC && KC.clicker) {
     '(expect 1 | true | false | 1/3@320)',
   );
 
-  const replay = await KC.clicker.trigger(group, settings);
+  const replay = await CK.clicker.trigger(group, settings);
   console.log(
     '取消后重播:',
     'clicked', replay.steps.length,
@@ -461,7 +541,7 @@ if (KC && KC.clicker) {
     intervalMs: 120,
   };
   const stamps = [];
-  const perStepRes = await KC.clicker.trigger(perStep, settings, () => stamps.push(Date.now()));
+  const perStepRes = await CK.clicker.trigger(perStep, settings, () => stamps.push(Date.now()));
   const gaps = stamps.slice(1).map((t, i) => t - stamps[i]);
   console.log(
     '逐步间隔 :',
@@ -473,10 +553,10 @@ if (KC && KC.clicker) {
     '(expect 3 | true | true)',
   );
 
-  const interrupted = KC.clicker.trigger(group, settings);
-  KC.clicker.cancelAll();
+  const interrupted = CK.clicker.trigger(group, settings);
+  CK.clicker.cancelAll();
   const stopped = await interrupted;
-  const afterCancelAll = await KC.clicker.trigger(group, settings);
+  const afterCancelAll = await CK.clicker.trigger(group, settings);
   console.log(
     'cancelAll:',
     'clicked', stopped.steps.length,
@@ -487,10 +567,10 @@ if (KC && KC.clicker) {
 }
 
 // 录制：穿透开关决定左键是否传给页面；右键撤销手势在两种模式下都被吞掉
-if (KC && KC.recorder && KC.store) {
+if (CK && CK.recorder && CK.store) {
   console.log('--- recorder ---');
   const draftLayer = () =>
-    KC.hint.ensure().querySelector('.kc-hint-root').querySelector('.kc-drafts');
+    CK.hint.ensure().querySelector('.ck-hint-root').querySelector('.ck-drafts');
   const draftCount = () => draftLayer().children.length;
   const click = (init) =>
     globalThis.__fireWindow(
@@ -510,8 +590,8 @@ if (KC && KC.recorder && KC.store) {
       }),
     );
 
-  await KC.store.updateSettings({ recordPassthrough: false });
-  KC.recorder.start();
+  await CK.store.updateSettings({ recordPassthrough: false });
+  CK.recorder.start();
   const swallowed = click({ clientX: 320, clientY: 360 });
   const recordedWhileBlocked = draftCount();
   const undone = click({ button: 2, clientX: 320, clientY: 360 });
@@ -523,10 +603,10 @@ if (KC && KC.recorder && KC.store) {
     '| 撤销后剩余', draftCount(),
     '(expect true | 1 | true | 0)',
   );
-  KC.recorder.cancel();
+  CK.recorder.cancel();
 
-  await KC.store.updateSettings({ recordPassthrough: true });
-  KC.recorder.start();
+  await CK.store.updateSettings({ recordPassthrough: true });
+  CK.recorder.start();
   const through = click({ clientX: 640, clientY: 360 });
   console.log(
     '穿透模式 :',
@@ -538,16 +618,111 @@ if (KC && KC.recorder && KC.store) {
   press({ code: 'KeyZ', key: 'z' });
   press({ code: 'KeyZ', key: 'z' });
   await new Promise((resolve) => setTimeout(resolve, 20));
-  const saved = KC.store.rulesFor(KC.origin).find((rule) => rule.shortcut.code === 'KeyZ');
+  const saved = CK.store.rulesFor(CK.origin).find((rule) => rule.shortcut.code === 'KeyZ');
   console.log(
     '录制保存 :',
     saved ? `${saved.steps.length} 步` : 'MISSING',
     '| 间隔', saved && saved.intervalMs,
     '| 归一化', saved && saved.steps.map((s) => `${s.nx},${s.ny}`).join(' '),
-    '| 录制已复位', !KC.recorder.isActive(),
-    `(expect 2 步 | ${KC.DEFAULT_STEP_INTERVAL_MS} | 0.5,0.5 0.75,0.5 | true)`,
+    '| 录制已复位', !CK.recorder.isActive(),
+    `(expect 2 步 | ${CK.DEFAULT_STEP_INTERVAL_MS} | 0.5,0.5 0.75,0.5 | true)`,
   );
-  if (saved) await KC.store.removeRule(KC.origin, saved.id);
+  // shortcut.label / rule.button / rule.clickCount 全仓没有读取方，写进去只会永久污染导出文件；
+  // createdAt 相反，它是事后无法重建的诊断信息，必须留着
+  console.log(
+    '死字段   :',
+    saved
+      ? ['label' in saved.shortcut, 'button' in saved, 'clickCount' in saved].join(',')
+      : 'MISSING',
+    '| createdAt 保留', !!(saved && saved.createdAt),
+    '(expect false,false,false | true)',
+  );
+  if (saved) await CK.store.removeRule(CK.origin, saved.id);
+}
+
+// 导入：版本策略、非 canvas 步骤、以及「一律重新发 id」
+if (CK && CK.transfer && CK.store) {
+  console.log('--- transfer ---');
+  const payload = {
+    version: 1,
+    appVersion: CK.APP_VERSION,
+    settings: { enabled: true },
+    sites: {
+      [CK.origin]: {
+        enabled: true,
+        activeSchemeId: 'sc_a',
+        schemes: [
+          {
+            id: 'sc_a',
+            name: '默认',
+            rules: [
+              {
+                id: 'r_foreign',
+                shortcut: { code: 'KeyQ', key: 'q' },
+                steps: [{ nx: null, ny: null, x: 100, y: 200, canvas: null }],
+              },
+            ],
+          },
+        ],
+      },
+    },
+  };
+  const parsed = CK.transfer.parse(JSON.stringify(payload));
+  console.log(
+    '导入解析 :',
+    'ok', !!parsed.ok,
+    '| 站点', parsed.siteCount,
+    '| 规则', parsed.ruleCount,
+    '(expect true | 1 | 1：nx/ny 为 null 是普通网页的正常形状，不是脏数据)',
+  );
+  console.log(
+    '缺版本号 :',
+    CK.transfer.parse('{"settings":{}}').error,
+    '(expect 文件缺少有效的配置版本号)',
+  );
+  console.log(
+    '更高版本 :',
+    CK.transfer.parse('{"version":99}').error,
+    `(expect 提到 v99 与 v${CK.VERSION})`,
+  );
+
+  const before = CK.store.rulesFor(CK.origin).length;
+  await CK.transfer.applyImport(parsed, 'skip');
+  const imported = CK.store.rulesFor(CK.origin).find((rule) => rule.shortcut.code === 'KeyQ');
+  console.log(
+    '跳过导入 :',
+    '规则数', CK.store.rulesFor(CK.origin).length, `(expect ${before + 1})`,
+    '| 重新发了 id', !!imported && imported.id !== 'r_foreign',
+    '| 按名字并进了同一个方案',
+    CK.store.schemesFor(CK.origin).map((scheme) => scheme.name).join('|'),
+    '(expect true | 默认)',
+  );
+  await CK.transfer.applyImport(parsed, 'skip');
+  console.log(
+    '再导一次 :',
+    '同 combo 被去重', CK.store.rulesFor(CK.origin).length, `(expect ${before + 1})`,
+    '| 方案没被复制', CK.store.schemesFor(CK.origin).length, '(expect 1)',
+  );
+}
+
+// 降级只读：配置来自更新版本时改动不落盘，但内存里的字段一个都不许丢
+if (CK && CK.store) {
+  console.log('--- downgrade ---');
+  globalThis.__fireStorageChange({
+    version: 99,
+    settings: { enabled: true, futureFlag: 7 },
+    sites: {},
+  });
+  const writes = storageWrites.length;
+  await CK.store.updateSettings({ holdMs: 120 });
+  console.log(
+    '只读模式 :',
+    'foreign', CK.store.foreignVersion(), '(expect 99)',
+    '| 未落盘', storageWrites.length === writes, '(expect true)',
+    '| 内存里改了', CK.store.current().settings.holdMs, '(expect 120)',
+    '| version 没被写低', CK.store.current().version, '(expect 99)',
+    '| 未知设置项保住', CK.store.current().settings.futureFlag, '(expect 7)',
+  );
 }
 
 setTimeout(() => {

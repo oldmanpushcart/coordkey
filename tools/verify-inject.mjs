@@ -71,8 +71,8 @@ async function main() {
     return res.result.value;
   };
 
-  const widget = await probe(`!!document.querySelector('[data-keyclick-widget]')`);
-  const hint = await probe(`!!document.querySelector('[data-keyclick-hint]')`);
+  const widget = await probe(`!!document.querySelector('[data-coordkey-widget]')`);
+  const hint = await probe(`!!document.querySelector('[data-coordkey-hint]')`);
   const canvas = await probe(`!!document.querySelector('#stage')`);
 
   console.log('page canvas present :', canvas);

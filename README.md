@@ -1,10 +1,11 @@
-# KeyClick
+# CoordKey
 
 > **把键盘快捷键绑定到屏幕坐标**
 >
 > 按下单键或组合键，就在你录下的位置触发鼠标点击。
 > 专为 **Canvas 应用**、**Web 游戏** 及 **重复性 UI 操作** 设计的生产力工具。
 
+[![Release](https://img.shields.io/github/v/release/oldmanpushcart/coordkey?label=version)](https://github.com/oldmanpushcart/coordkey/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Manifest V3](https://img.shields.io/badge/Manifest-V3-4285F4.svg)
 ![Permissions](https://img.shields.io/badge/permissions-storage%20only-success.svg)
@@ -14,7 +15,7 @@
 
 ## 🖼️ 界面预览
 
-KeyClick 提供直观的可视化操作界面，让你在录制坐标和管理快捷键时一目了然。
+CoordKey 提供直观的可视化操作界面，让你在录制坐标和管理快捷键时一目了然。
 
 <table>
   <tr>
@@ -46,12 +47,12 @@ KeyClick 提供直观的可视化操作界面，让你在录制坐标和管理�
 
 ---
 
-## 💡 为什么选择 KeyClick？
+## 💡 为什么选择 CoordKey？
 
-市面上有许多自动点击工具，但 KeyClick 专注于解决**特定场景下的痛点**：
+市面上有许多自动点击工具，但 CoordKey 专注于解决**特定场景下的痛点**：
 
 *   **🎨 攻克 Canvas 自动化难题**
-    传统的 DOM 自动化工具无法识别 `<canvas>` 内的元素（如 Figma 类应用、Web 游戏、在线白板）。KeyClick 基于**坐标映射**，无论 UI 是如何渲染的，只要鼠标能点，KeyClick 就能复现。
+    传统的 DOM 自动化工具无法识别 `<canvas>` 内的元素（如 Figma 类应用、Web 游戏、在线白板）。CoordKey 基于**坐标映射**，无论 UI 是如何渲染的，只要鼠标能点，CoordKey 就能复现。
 *   **⚡ 真正的“零构建”与隐私安全**
     无需 Node.js 环境，无需打包。克隆即用。仅申请 `storage` 权限，不使用 `chrome.debugger`，**绝无**“已开始调试此浏览器”的烦人提示条。
 *   **⌨️ 键盘即鼠标**
@@ -88,7 +89,7 @@ KeyClick 提供直观的可视化操作界面，让你在录制坐标和管理�
 4.  点击 **“加载已解压的扩展程序”**，选择本仓库根目录。
 
 ### 快速上手
-1.  **启动**：打开目标网页，点击右下角 KeyClick 图标展开面板。
+1.  **启动**：打开目标网页，点击右下角 CoordKey 图标展开面板。
 2.  **录制**：点击 **“＋ 录制快捷键”** -> 在页面点击目标位置（可连点多步） -> 按下键盘按键绑定。
 3.  **使用**：按下绑定的键，即可在对应位置触发点击。
 
@@ -107,19 +108,42 @@ KeyClick 提供直观的可视化操作界面，让你在录制坐标和管理�
 
 ---
 
+## 📦 版本
+
+**1.0.0 是 CoordKey 的首个正式版本。** 在此之前它以 KeyClick 为名做了一段时间的功能验证，1.0.0 同时完成了改名与存储格式定稿。
+
+这里有两个**各自独立演进**的版本号，排查问题时请先分清是哪一个：
+
+| | 当前值 | 来源 | 含义 |
+| :--- | :--- | :--- | :--- |
+| **app 版本** | `1.0.0` | `manifest.json` 的 `version`（semver） | 扩展本身的版本。界面标题右侧的徽标、导出文件里的 `appVersion` 都读它，代码里没有第二份硬编码。 |
+| **配置 schema 版本** | `1` | `src/shared/protocol.js` 的 `VERSION`（整数） | 存储格式的版本，写在 `chrome.storage.local` 的数据里。 |
+
+两者不联动：加一个功能通常只动 app 版本；只有**破坏性的存储结构改动**才会让 schema 版本 +1 并追加一个迁移函数。纯加法（新增可选字段）不升 schema 版本。完整策略见 [docs/storage.md](docs/storage.md)。
+
+> 由于 1.0.0 把 schema 计数器归零到了 1，此前测试期写入的本地配置（旧 key `profile` 下的 v1~v3 数据）会被直接忽略并清除，需要重新录制。这是唯一一次不作迁移的归零。
+
+---
+
 ## 🤝 贡献与开发
 
 欢迎提交 Issue 和 PR！
 
-*   **零构建原则**：内容脚本直接加载，共享 `self.KEYCLICK` 命名空间。
-*   **测试**：修改脚本后，请运行 `node tools/smoke-content.mjs` 进行冒烟测试。
+*   **零构建原则**：内容脚本按 `manifest.json` 里 `js` 数组的顺序直接加载，共享 `self.COORDKEY` 命名空间。不要引入打包器或依赖。
+*   **存储格式**：改动 schema 前请先读 [docs/storage.md](docs/storage.md)。归一化必须**无损**（未知字段靠 spread 保留），Service Worker 只允许翻 `settings.enabled` 一个布尔，不得把整份 profile 写回。
+*   **测试**：修改脚本后，请运行 `node tools/smoke-content.mjs`，必须输出 `SMOKE: PASSED`。浏览器行为无法自动化（Chrome stable 会静默忽略 `--load-extension`），请按 [docs/manual-checklist.md](docs/manual-checklist.md) 手动验收。
 *   **图标**：如需修改图标，运行 `node tools/gen-icons.mjs`。
 
 ### 目录结构
 ```text
+manifest.json      # MV3 清单，内容脚本的加载顺序在这里定义
 src/
-├── background/    # Service Worker (全局状态)
-├── content/       # 核心逻辑 (注入页面)
-│   ├── core/      # 坐标计算、事件派发
-│   └── ui/        # 面板、浮层、录制交互
-└── shared/        # 类型定义与常量
+├── background/    # Service Worker（总开关与徽标）
+├── content/       # 注入页面的核心逻辑
+│   ├── core/      # 快捷键匹配、坐标解析、事件派发、存储、导入导出
+│   └── ui/        # 面板、标记浮层、录制交互、样式
+└── shared/        # protocol.js：schema 版本、归一化与迁移，SW 与内容脚本共用
+docs/              # 存储结构说明、手动验收清单、界面截图
+test/demo.html     # 自测页：canvas 点击计数、hover 菜单、输入框
+tools/             # 冒烟测试、注入验证、图标生成
+```

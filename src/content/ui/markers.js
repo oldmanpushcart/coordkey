@@ -1,5 +1,5 @@
 (() => {
-  const KC = self.KEYCLICK;
+  const CK = self.COORDKEY;
 
   let layer = null;
   let items = [];
@@ -7,19 +7,19 @@
   let bound = false;
 
   // 复用浮现层的 shadow host：它本身就是 pointer-events:none，标记不会吞掉页面点击。
-  // 插在 .kc-hint-root 之前，触发时的闪现反馈才会盖在同位置的持久标记之上。
+  // 插在 .ck-hint-root 之前，触发时的闪现反馈才会盖在同位置的持久标记之上。
   function ensureLayer() {
-    const root = KC.hint.ensure();
+    const root = CK.hint.ensure();
     if (layer && layer.isConnected) return layer;
     layer = document.createElement('div');
-    layer.className = 'kc-markers';
-    root.insertBefore(layer, root.querySelector('.kc-hint-root'));
+    layer.className = 'ck-markers';
+    root.insertBefore(layer, root.querySelector('.ck-hint-root'));
     return layer;
   }
 
   function position() {
     for (const item of items) {
-      const target = KC.clicker.resolveTarget(item.step, item.rule.env);
+      const target = CK.clicker.resolveTarget(item.step, item.rule.env);
       if (!target) {
         item.el.style.display = 'none';
         continue;
@@ -52,21 +52,21 @@
     items = [];
     bindViewport();
 
-    const profile = KC.store.current();
+    const profile = CK.store.current();
     if (!profile) return;
     const settings = profile.settings;
-    const site = KC.store.siteOf(profile, KC.origin);
+    const site = CK.store.siteOf(profile, CK.origin);
     if (!settings.showMarkers || !settings.enabled || !site || !site.enabled) return;
 
-    const scheme = site.schemes[site.activeScheme];
+    const scheme = CK.store.activeSchemeOf(profile, CK.origin);
     for (const rule of scheme ? scheme.rules : []) {
       if (!rule.shortcut) continue;
       const steps = Array.isArray(rule.steps) ? rule.steps : [];
       if (!steps.length) continue;
-      const symbols = KC.hotkeys.comboSymbols(rule.shortcut);
+      const symbols = CK.hotkeys.comboSymbols(rule.shortcut);
       steps.forEach((step, index) => {
         const el = document.createElement('div');
-        el.className = 'kc-badge';
+        el.className = 'ck-badge';
         // 多步规则带上序号，既能看出快捷键也能看出点击顺序
         el.textContent = steps.length > 1 ? `${index + 1} ${symbols}` : symbols;
         box.appendChild(el);
@@ -81,9 +81,9 @@
     items = [];
   }
 
-  KC.on((event) => {
+  CK.on((event) => {
     if (event === 'profile') render();
   });
 
-  KC.markers = { render, clear };
+  CK.markers = { render, clear };
 })();

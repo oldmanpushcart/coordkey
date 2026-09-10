@@ -1,5 +1,5 @@
 (() => {
-  const KC = self.KEYCLICK;
+  const CK = self.COORDKEY;
 
   // ruleId -> run。同一条规则播放中再次触发即为取消，所以必须有这张运行表。
   const runs = new Map();
@@ -182,7 +182,7 @@
     }
 
     const holdMs = settings && Number(settings.holdMs) > 0 ? Number(settings.holdMs) : 0;
-    const key = rule.id || KC.uid();
+    const key = rule.id || CK.uid();
     const run = { cancelled: false, wake: null };
     runs.set(key, run);
 
@@ -234,5 +234,5 @@
     runs.clear();
   }
 
-  KC.clicker = { trigger, cancelAll, resolveTarget, findCanvas, canvasAt, describeCanvas };
+  CK.clicker = { trigger, cancelAll, resolveTarget, findCanvas, canvasAt, describeCanvas };
 })();
